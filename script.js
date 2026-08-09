@@ -67,7 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Run hash routing handler on initial load
+  // Listen to hash changes dynamically
+  window.addEventListener('hashchange', handleHashRouting);
   handleHashRouting();
 
   // --- DOM Elements ---
@@ -157,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // User Registration (Ensuring UNIQUE email & username)
+  // User Registration
   if (registerForm) {
     registerForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -165,14 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = document.getElementById('regEmail').value.trim().toLowerCase();
       const password = document.getElementById('regPassword').value;
 
-      const emailExists = users.some(u => u.email === email);
-      const usernameExists = users.some(u => u.username === username);
-
-      if (emailExists) {
+      if (users.some(u => u.email === email)) {
         showToast('Error: This email is already registered.');
         return;
       }
-      if (usernameExists) {
+      if (users.some(u => u.username === username)) {
         showToast('Error: This username is already taken.');
         return;
       }
@@ -424,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Date(expirationDate) < new Date();
   }
 
-  // --- Global Window Helpers ---
+  // --- Global Helpers ---
   window.registerClick = (id) => {
     const link = links.find(l => l.id === id);
     if (link) {
@@ -514,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Real-Data Analytics Charts ---
+  // --- Analytics Charts ---
   function renderCharts() {
     if (typeof Chart === 'undefined') return;
 
