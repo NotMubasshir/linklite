@@ -1,13 +1,9 @@
 /**
  * LinkLite - Production Web Application Core Logic
- * Updated / Bug-Fixed Version
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // =========================================================
-  // STATE
-  // =========================================================
-
+  // --- State Management ---
   let users = JSON.parse(localStorage.getItem('linklite_users')) || [];
   let currentUser = JSON.parse(localStorage.getItem('linklite_current_user')) || null;
   let links = JSON.parse(localStorage.getItem('linklite_links')) || [];
@@ -16,153 +12,46 @@ document.addEventListener('DOMContentLoaded', () => {
   let clicksChartInstance = null;
   let referrerChartInstance = null;
 
-  // =========================================================
-  // PASSWORD MODAL
-  // =========================================================
-
+  // --- Password Modal Elements ---
   const passwordModal = document.getElementById('passwordModal');
   const passwordForm = document.getElementById('passwordForm');
   const linkPasswordInput = document.getElementById('linkPasswordInput');
   const passwordError = document.getElementById('passwordError');
 
-  // =========================================================
-  // UTILITY FUNCTIONS
-  // =========================================================
-
-  function showToast(message) {
-    const container = document.getElementById('toastContainer');
-
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = message;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.remove();
-    }, 3000);
-  }
-
-  function saveLinks() {
-    localStorage.setItem('linklite_links', JSON.stringify(links));
-  }
-
-  function isExpired(expirationDate) {
-    if (!expirationDate) return false;
-
-    const expiration = new Date(expirationDate);
-
-    if (Number.isNaN(expiration.getTime())) {
-      return false;
-    }
-
-    return expiration < new Date();
-  }
-
-  function isValidUrl(value) {
-    try {
-      const url = new URL(value);
-
-      // Only allow normal web URLs
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  }
-
-  function generateAlias() {
-    const characters =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-
-    let alias = '';
-
-    do {
-      alias = '';
-
-      for (let i = 0; i < 6; i++) {
-        alias += characters.charAt(
-          Math.floor(Math.random() * characters.length)
-        );
-      }
-    } while (links.some(link => link.alias === alias));
-
-    return alias;
-  }
-
-  function normalizeAlias(alias) {
-    return decodeURIComponent(alias || '').trim();
-  }
-
-  // =========================================================
-  // SHORT URL BASE
-  // =========================================================
-
-  function getBaseUrl() {
-    let pathname = window.location.pathname;
-
-    // Make sure the path points to the actual GitHub Pages directory
-    if (!pathname.endsWith('/')) {
-      pathname += '/';
-    }
-
-    return `${window.location.origin}${pathname}`;
-  }
-
-  function createShortUrl(alias) {
-    return `${getBaseUrl()}#${encodeURIComponent(alias)}`;
-  }
-
-  // =========================================================
-  // HASH ROUTING / REDIRECTION
-  // =========================================================
-
+  // --- Client-Side Routing for Hash Redirects & Password Checks ---
   function handleHashRouting() {
-    const rawHash = window.location.hash;
+    if (!window.location.hash) return;
 
-    if (!rawHash || rawHash.length <= 1) {
+    const hashVal = decodeURIComponent(
+      window.location.hash.substring(1)
+    ).trim();
+
+    // Ignore internal navigation anchors
+    if (['hero', 'dashboard', 'analytics'].includes(hashVal)) {
       return;
     }
 
-    const alias = normalizeAlias(rawHash.substring(1));
+    if (!hashVal) return;
 
-    // Ignore normal page navigation hashes
-    const ignoredHashes = [
-      'hero',
-      'dashboard',
-      'analytics'
-    ];
-
-    if (!alias || ignoredHashes.includes(alias)) {
-      return;
-    }
-
-    // Find the shortened link from localStorage
     const matchedLink = links.find(
-      link => String(link.alias).toLowerCase() === alias.toLowerCase()
+      l => String(l.alias).toLowerCase() === hashVal.toLowerCase()
     );
 
     if (!matchedLink) {
       showToast('Short link not found.');
-
-      // Remove the invalid hash without reloading
-      history.replaceState(
-        null,
-        '',
-        window.location.pathname + window.location.search
-      );
-
       return;
     }
 
-    // Check expiration
     if (isExpired(matchedLink.expiration)) {
       showToast('This link has expired.');
       return;
     }
 
-    // Password protected link
+    if (!matchedLink.originalUrl || !isValidUrl(matchedLink.originalUrl)) {
+      showToast('This short link has an invalid destination.');
+      return;
+    }
+
     if (matchedLink.password) {
       pendingRedirectLink = matchedLink;
 
@@ -178,11 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
         linkPasswordInput.value = '';
         linkPasswordInput.focus();
       }
-
-      return;
+    } else {
+      executeRedirect(matchedLink);
     }
-
-    executeRedirect(matchedLink);
   }
 
   function executeRedirect(link) {
@@ -196,24 +83,19 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Register click before redirecting
     registerClick(link.id);
 
-    // Use replace so the broken short-link page isn't left
-    // in browser history.
+    // Replace current page instead of keeping the short URL in history
     window.location.replace(link.originalUrl);
   }
 
-  // =========================================================
-  // PASSWORD SUBMISSION
-  // =========================================================
-
+  // Handle password submission for protected links
   if (passwordForm) {
-    passwordForm.addEventListener('submit', e => {
+    passwordForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      if (!pendingRedirectLink) {
-        return;
-      }
+      if (!pendingRedirectLink) return;
 
       const enteredPassword = linkPasswordInput
         ? linkPasswordInput.value
@@ -237,98 +119,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Listen to hash changes dynamically.
+  // IMPORTANT: We do NOT call handleHashRouting() here.
+  // It is called at the very bottom after all functions are initialized.
   window.addEventListener('hashchange', handleHashRouting);
 
-  // Run after the page is loaded
-  handleHashRouting();
-
-  // =========================================================
-  // DOM ELEMENTS
-  // =========================================================
-
+  // --- DOM Elements ---
   const shortenForm = document.getElementById('shortenForm');
   const longUrlInput = document.getElementById('longUrlInput');
   const customAliasInput = document.getElementById('customAlias');
-  const expirationDateInput =
-    document.getElementById('expirationDate');
-  const passwordProtectInput =
-    document.getElementById('passwordProtect');
+  const expirationDateInput = document.getElementById('expirationDate');
+  const passwordProtectInput = document.getElementById('passwordProtect');
 
   const resultCard = document.getElementById('resultCard');
   const resultShortUrl = document.getElementById('resultShortUrl');
   const resultOriginalUrl = document.getElementById('resultOriginalUrl');
   const copyResultBtn = document.getElementById('copyResultBtn');
   const openResultLink = document.getElementById('openResultLink');
-
   const qrcodeContainer = document.getElementById('qrcode');
   const downloadQrBtn = document.getElementById('downloadQrBtn');
 
-  const linksTableBody =
-    document.getElementById('linksTableBody');
+  const linksTableBody = document.getElementById('linksTableBody');
+  const emptyState = document.getElementById('emptyState');
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const sortSelect = document.getElementById('sortSelect');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const dropZone = document.getElementById('dropZone');
 
-  const emptyState =
-    document.getElementById('emptyState');
+  // Auth Elements
+  const openAuthBtn = document.getElementById('openAuthBtn');
+  const authModal = document.getElementById('authModal');
+  const closeAuthModal = document.getElementById('closeAuthModal');
+  const tabLoginBtn = document.getElementById('tabLoginBtn');
+  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const loggedOutNav = document.getElementById('loggedOutNav');
+  const loggedInNav = document.getElementById('loggedInNav');
+  const userGreeting = document.getElementById('userGreeting');
+  const logoutBtn = document.getElementById('logoutBtn');
 
-  const searchInput =
-    document.getElementById('searchInput');
-
-  const statusFilter =
-    document.getElementById('statusFilter');
-
-  const sortSelect =
-    document.getElementById('sortSelect');
-
-  const exportCsvBtn =
-    document.getElementById('exportCsvBtn');
-
-  const themeToggleBtn =
-    document.getElementById('themeToggleBtn');
-
-  const dropZone =
-    document.getElementById('dropZone');
-
-  // =========================================================
-  // AUTH ELEMENTS
-  // =========================================================
-
-  const openAuthBtn =
-    document.getElementById('openAuthBtn');
-
-  const authModal =
-    document.getElementById('authModal');
-
-  const closeAuthModal =
-    document.getElementById('closeAuthModal');
-
-  const tabLoginBtn =
-    document.getElementById('tabLoginBtn');
-
-  const tabRegisterBtn =
-    document.getElementById('tabRegisterBtn');
-
-  const loginForm =
-    document.getElementById('loginForm');
-
-  const registerForm =
-    document.getElementById('registerForm');
-
-  const loggedOutNav =
-    document.getElementById('loggedOutNav');
-
-  const loggedInNav =
-    document.getElementById('loggedInNav');
-
-  const userGreeting =
-    document.getElementById('userGreeting');
-
-  const logoutBtn =
-    document.getElementById('logoutBtn');
-
-  // =========================================================
-  // THEME
-  // =========================================================
-
-  function initTheme() {
+  // --- Theme Controller ---
+  const initTheme = () => {
     const savedTheme =
       localStorage.getItem('linklite_theme') || 'light';
 
@@ -336,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
       'data-theme',
       savedTheme
     );
-  }
+  };
 
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
@@ -360,10 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // AUTH UI
-  // =========================================================
-
+  // --- Auth System Logic ---
   function updateAuthUI() {
     if (currentUser) {
       if (loggedOutNav) {
@@ -405,10 +236,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // AUTH TABS
-  // =========================================================
-
   if (tabLoginBtn) {
     tabLoginBtn.addEventListener('click', () => {
       tabLoginBtn.classList.add('active');
@@ -445,12 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // REGISTER
-  // =========================================================
-
+  // --- User Registration ---
   if (registerForm) {
-    registerForm.addEventListener('submit', e => {
+    registerForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
       const usernameElement =
@@ -478,18 +302,18 @@ document.addEventListener('DOMContentLoaded', () => {
           : '';
 
       if (!username || !email || !password) {
-        showToast('Please fill in all registration fields.');
+        showToast('Please fill in all fields.');
         return;
       }
 
-      if (users.some(user => user.email === email)) {
+      if (users.some(u => u.email === email)) {
         showToast(
           'Error: This email is already registered.'
         );
         return;
       }
 
-      if (users.some(user => user.username === username)) {
+      if (users.some(u => u.username === username)) {
         showToast(
           'Error: This username is already taken.'
         );
@@ -497,10 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const newUser = {
-        id: crypto.randomUUID
-          ? crypto.randomUUID()
-          : Date.now().toString(),
-
+        id: Date.now().toString(),
         username,
         email,
         password
@@ -540,12 +361,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // LOGIN
-  // =========================================================
-
+  // --- User Login ---
   if (loginForm) {
-    loginForm.addEventListener('submit', e => {
+    loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
       const identifierElement =
@@ -564,12 +382,11 @@ document.addEventListener('DOMContentLoaded', () => {
           ? passwordElement.value
           : '';
 
-      const matchedUser = users.find(user =>
-        (
-          user.email === identifier ||
-          user.username === identifier
-        ) &&
-        user.password === password
+      const matchedUser = users.find(
+        u =>
+          (u.email === identifier ||
+            u.username === identifier) &&
+          u.password === password
       );
 
       if (!matchedUser) {
@@ -606,10 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // LOGOUT
-  // =========================================================
-
+  // --- User Logout ---
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       currentUser = null;
@@ -628,26 +442,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // USER LINKS
-  // =========================================================
-
+  // --- Helper to filter links by user scope ---
   function getUserLinks() {
     if (!currentUser) {
       return links;
     }
 
     return links.filter(
-      link => link.userId === currentUser.id
+      l => l.userId === currentUser.id
     );
   }
 
-  // =========================================================
-  // URL SHORTENER
-  // =========================================================
-
+  // --- URL Shortening Logic ---
   if (shortenForm) {
-    shortenForm.addEventListener('submit', e => {
+    shortenForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
       const originalUrl =
@@ -660,9 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Only allow real HTTP/HTTPS URLs
       if (!isValidUrl(originalUrl)) {
         showToast(
-          'Please enter a valid HTTP or HTTPS URL.'
+          'Please enter a valid URL starting with http:// or https://'
         );
         return;
       }
@@ -693,8 +502,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (
           links.some(
-            link =>
-              String(link.alias).toLowerCase() ===
+            l =>
+              String(l.alias).toLowerCase() ===
               customAlias.toLowerCase()
           )
         ) {
@@ -708,13 +517,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const alias =
         customAlias || generateAlias();
 
+      // IMPORTANT:
+      // Use origin + pathname so the link works correctly
+      // even when the site is hosted inside /linklite/
+      const baseUrl =
+        `${window.location.origin}${window.location.pathname}`
+          .replace(/\/+$/, '') + '/';
+
       const shortUrl =
-        createShortUrl(alias);
+        `${baseUrl}#${encodeURIComponent(alias)}`;
 
       const newLink = {
-        id: crypto.randomUUID
-          ? crypto.randomUUID()
-          : Date.now().toString(),
+        id: Date.now().toString(),
 
         userId:
           currentUser
@@ -762,10 +576,45 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================
-  // RESULT
-  // =========================================================
+  // --- Alias Generator ---
+  function generateAlias() {
+    const chars =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
+    let alias;
+
+    do {
+      alias = '';
+
+      for (let i = 0; i < 6; i++) {
+        alias += chars.charAt(
+          Math.floor(Math.random() * chars.length)
+        );
+      }
+    } while (
+      links.some(
+        l => l.alias === alias
+      )
+    );
+
+    return alias;
+  }
+
+  // --- URL Validation ---
+  function isValidUrl(string) {
+    try {
+      const url = new URL(string);
+
+      return (
+        url.protocol === 'http:' ||
+        url.protocol === 'https:'
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // --- Render Result ---
   function renderResult(link) {
     if (resultShortUrl) {
       resultShortUrl.value = link.shortUrl;
@@ -801,141 +650,69 @@ document.addEventListener('DOMContentLoaded', () => {
       resultCard.classList.remove('hidden');
 
       resultCard.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
+        behavior: 'smooth'
       });
     }
   }
 
-  // =========================================================
-  // COPY RESULT
-  // =========================================================
-
-  async function copyToClipboard(text) {
-    if (!text) return false;
-
-    try {
-      if (
-        navigator.clipboard &&
-        window.isSecureContext
-      ) {
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-
-      const textarea =
-        document.createElement('textarea');
-
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-
-      document.body.appendChild(textarea);
-
-      textarea.focus();
-      textarea.select();
-
-      const successful =
-        document.execCommand('copy');
-
-      textarea.remove();
-
-      return successful;
-    } catch {
-      return false;
-    }
-  }
-
+  // --- Clipboard Action ---
   if (copyResultBtn) {
-    copyResultBtn.addEventListener(
-      'click',
-      async () => {
-        if (!resultShortUrl) return;
+    copyResultBtn.addEventListener('click', async () => {
+      if (!resultShortUrl) return;
 
-        const copied =
-          await copyToClipboard(
-            resultShortUrl.value
-          );
+      const text =
+        resultShortUrl.value;
 
-        if (copied) {
+      try {
+        await navigator.clipboard.writeText(text);
+
+        copyResultBtn.textContent =
+          'Copied!';
+
+        setTimeout(() => {
           copyResultBtn.textContent =
-            'Copied!';
+            'Copy';
+        }, 2000);
 
-          setTimeout(() => {
-            copyResultBtn.textContent =
-              'Copy';
-          }, 2000);
-
-          showToast(
-            'Copied to clipboard'
-          );
-        } else {
-          showToast(
-            'Unable to copy automatically.'
-          );
-        }
+        showToast(
+          'Copied to clipboard'
+        );
+      } catch (error) {
+        showToast(
+          'Could not copy the link.'
+        );
       }
-    );
+    });
   }
 
-  // =========================================================
-  // COPY LINK
-  // =========================================================
-
-  window.copyLink = async url => {
-    const copied =
-      await copyToClipboard(url);
-
-    if (copied) {
-      showToast(
-        'Link copied to clipboard'
-      );
-    } else {
-      showToast(
-        'Unable to copy link.'
-      );
-    }
-  };
-
-  // =========================================================
-  // DOWNLOAD QR
-  // =========================================================
-
+  // --- Download QR Code ---
   if (downloadQrBtn) {
-    downloadQrBtn.addEventListener(
-      'click',
-      () => {
-        if (!qrcodeContainer) {
-          return;
-        }
+    downloadQrBtn.addEventListener('click', () => {
+      if (!qrcodeContainer) return;
 
-        const img =
-          qrcodeContainer.querySelector('img');
+      const img =
+        qrcodeContainer.querySelector('img');
 
-        if (img && img.src) {
-          const a =
-            document.createElement('a');
+      if (img && img.src) {
+        const a =
+          document.createElement('a');
 
-          a.href = img.src;
-          a.download =
-            'linklite-qr.png';
+        a.href = img.src;
+        a.download =
+          'linklite-qr.png';
 
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        } else {
-          showToast(
-            'QR code is not ready.'
-          );
-        }
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        showToast(
+          'QR code is not available.'
+        );
       }
-    );
+    });
   }
 
-  // =========================================================
-  // DASHBOARD
-  // =========================================================
-
+  // --- Dashboard Renderer ---
   function renderDashboard() {
     const activeUserLinks =
       getUserLinks();
@@ -945,8 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const totalClicks =
       activeUserLinks.reduce(
-        (sum, link) =>
-          sum + Number(link.clicks || 0),
+        (sum, l) =>
+          sum + Number(l.clicks || 0),
         0
       );
 
@@ -955,27 +732,22 @@ document.addEventListener('DOMContentLoaded', () => {
         .toISOString()
         .split('T')[0];
 
-    // NOTE:
-    // This still represents links created today,
-    // because your current data model doesn't store
-    // individual click timestamps.
     const todayClicks =
       activeUserLinks
         .filter(
-          link =>
-            link.createdAt &&
-            link.createdAt.startsWith(todayStr)
+          l =>
+            l.createdAt &&
+            l.createdAt.startsWith(todayStr)
         )
         .reduce(
-          (sum, link) =>
-            sum + Number(link.clicks || 0),
+          (sum, l) =>
+            sum + Number(l.clicks || 0),
           0
         );
 
     const activeLinks =
       activeUserLinks.filter(
-        link =>
-          !isExpired(link.expiration)
+        l => !isExpired(l.expiration)
       ).length;
 
     const metricTotalLinks =
@@ -1023,19 +795,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const query =
       searchInput
-        ? searchInput.value
-            .trim()
-            .toLowerCase()
+        ? searchInput.value.toLowerCase()
         : '';
 
     if (query) {
       filtered =
-        filtered.filter(link =>
-          String(link.originalUrl)
+        filtered.filter(l =>
+          l.originalUrl
             .toLowerCase()
             .includes(query) ||
-
-          String(link.alias)
+          l.alias
             .toLowerCase()
             .includes(query)
         );
@@ -1049,23 +818,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (status === 'active') {
       filtered =
         filtered.filter(
-          link =>
-            !isExpired(link.expiration)
+          l => !isExpired(l.expiration)
         );
     }
 
     if (status === 'expired') {
       filtered =
         filtered.filter(
-          link =>
-            isExpired(link.expiration)
+          l => isExpired(l.expiration)
         );
     }
 
     if (status === 'favorite') {
       filtered =
         filtered.filter(
-          link => link.isFavorite
+          l => l.isFavorite
         );
     }
 
@@ -1098,9 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     }
 
-    if (!linksTableBody) {
-      return;
-    }
+    if (!linksTableBody) return;
 
     linksTableBody.innerHTML = '';
 
@@ -1110,167 +875,186 @@ document.addEventListener('DOMContentLoaded', () => {
           'hidden'
         );
       }
+    } else {
+      if (emptyState) {
+        emptyState.classList.add(
+          'hidden'
+        );
+      }
 
-      return;
-    }
+      filtered.forEach(link => {
+        const tr =
+          document.createElement('tr');
 
-    if (emptyState) {
-      emptyState.classList.add(
-        'hidden'
-      );
-    }
+        const expired =
+          isExpired(link.expiration);
 
-    filtered.forEach(link => {
-      const tr =
-        document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <a
+              href="${link.shortUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              onclick="registerClick('${link.id}')"
+              style="font-weight: 600;"
+            >
+              /${link.alias}
+            </a>
 
-      const expired =
-        isExpired(link.expiration);
-
-      const escapedOriginalUrl =
-        String(link.originalUrl)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-
-      tr.innerHTML = `
-        <td>
-          <a
-            href="${link.shortUrl}"
-            target="_blank"
-            rel="noopener noreferrer"
-            style="font-weight: 600;"
-          >
-            /${link.alias}
-          </a>
-          ${link.password ? ' 🔒' : ''}
-        </td>
-
-        <td
-          style="
-            max-width: 250px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          "
-          title="${escapedOriginalUrl}"
-        >
-          ${escapedOriginalUrl}
-        </td>
-
-        <td>${Number(link.clicks || 0)}</td>
-
-        <td>
-          <span
-            class="badge ${
-              expired
-                ? 'badge-danger'
-                : 'badge-success'
-            }"
-          >
             ${
-              expired
-                ? 'Expired'
-                : 'Active'
+              link.password
+                ? ' 🔒'
+                : ''
             }
-          </span>
-        </td>
+          </td>
 
-        <td>
-          ${new Date(
-            link.createdAt
-          ).toLocaleDateString()}
-        </td>
-
-        <td class="text-right">
-
-          <button
-            class="btn btn-secondary btn-sm"
-            onclick="toggleFavorite('${link.id}')"
+          <td
+            style="
+              max-width: 250px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            "
           >
+            ${escapeHtml(link.originalUrl)}
+          </td>
+
+          <td>
+            ${Number(link.clicks || 0)}
+          </td>
+
+          <td>
+            <span
+              class="badge ${
+                expired
+                  ? 'badge-danger'
+                  : 'badge-success'
+              }"
+            >
+              ${
+                expired
+                  ? 'Expired'
+                  : 'Active'
+              }
+            </span>
+          </td>
+
+          <td>
             ${
-              link.isFavorite
-                ? '★'
-                : '☆'
+              new Date(
+                link.createdAt
+              ).toLocaleDateString()
             }
-          </button>
+          </td>
 
-          <button
-            class="btn btn-secondary btn-sm"
-            onclick="copyLink('${link.shortUrl}')"
-          >
-            Copy
-          </button>
+          <td class="text-right">
 
-          <button
-            class="btn btn-secondary btn-sm"
-            onclick="deleteLink('${link.id}')"
-          >
-            Delete
-          </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="toggleFavorite('${link.id}')"
+            >
+              ${
+                link.isFavorite
+                  ? '★'
+                  : '☆'
+              }
+            </button>
 
-        </td>
-      `;
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="copyLink('${link.shortUrl}')"
+            >
+              Copy
+            </button>
 
-      linksTableBody.appendChild(tr);
-    });
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="deleteLink('${link.id}')"
+            >
+              Delete
+            </button>
+
+          </td>
+        `;
+
+        linksTableBody.appendChild(tr);
+      });
+    }
   }
 
-  // =========================================================
-  // CLICK TRACKING
-  // =========================================================
+  // --- HTML Escape ---
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
-  window.registerClick = id => {
+  // --- Expiration Check ---
+  function isExpired(expirationDate) {
+    if (!expirationDate) return false;
+
+    const expiration =
+      new Date(expirationDate);
+
+    if (Number.isNaN(expiration.getTime())) {
+      return false;
+    }
+
+    return expiration < new Date();
+  }
+
+  // --- Global Helpers ---
+  window.registerClick = (id) => {
     const link =
       links.find(
-        item => item.id === id
+        l => l.id === id
       );
 
-    if (!link) {
-      return;
+    if (link) {
+      link.clicks =
+        Number(link.clicks || 0) + 1;
+
+      if (!link.referrers) {
+        link.referrers = {
+          Direct: 0,
+          Google: 0,
+          Twitter: 0,
+          LinkedIn: 0
+        };
+      }
+
+      link.referrers.Direct =
+        Number(
+          link.referrers.Direct || 0
+        ) + 1;
+
+      saveLinks();
+
+      renderDashboard();
+      renderCharts();
     }
-
-    link.clicks =
-      Number(link.clicks || 0) + 1;
-
-    if (!link.referrers) {
-      link.referrers = {
-        Direct: 0,
-        Google: 0,
-        Twitter: 0,
-        LinkedIn: 0
-      };
-    }
-
-    link.referrers.Direct =
-      Number(
-        link.referrers.Direct || 0
-      ) + 1;
-
-    saveLinks();
-
-    renderDashboard();
-    renderCharts();
   };
 
-  // =========================================================
-  // DELETE
-  // =========================================================
-
-  window.deleteLink = id => {
-    const exists =
-      links.some(
-        link => link.id === id
+  window.copyLink = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast(
+        'Link copied to clipboard'
       );
-
-    if (!exists) {
-      return;
+    } catch (_) {
+      showToast(
+        'Could not copy the link.'
+      );
     }
+  };
 
+  window.deleteLink = (id) => {
     links =
       links.filter(
-        link => link.id !== id
+        l => l.id !== id
       );
 
     saveLinks();
@@ -1283,31 +1067,22 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   };
 
-  // =========================================================
-  // FAVORITE
-  // =========================================================
-
-  window.toggleFavorite = id => {
+  window.toggleFavorite = (id) => {
     const link =
       links.find(
-        item => item.id === id
+        l => l.id === id
       );
 
-    if (!link) {
-      return;
+    if (link) {
+      link.isFavorite =
+        !link.isFavorite;
+
+      saveLinks();
+      renderDashboard();
     }
-
-    link.isFavorite =
-      !link.isFavorite;
-
-    saveLinks();
-    renderDashboard();
   };
 
-  // =========================================================
-  // FILTERING
-  // =========================================================
-
+  // --- Filtering Listeners ---
   if (searchInput) {
     searchInput.addEventListener(
       'input',
@@ -1329,149 +1104,109 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
-  // =========================================================
-  // DRAG AND DROP
-  // =========================================================
-
+  // --- Drag and Drop ---
   if (dropZone) {
-    dropZone.addEventListener(
-      'dragover',
-      e => {
-        e.preventDefault();
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
 
-        dropZone.classList.add(
-          'dragover'
-        );
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+
+      dropZone.classList.remove('dragover');
+
+      const droppedText =
+        e.dataTransfer.getData('text');
+
+      if (
+        droppedText &&
+        isValidUrl(droppedText) &&
+        longUrlInput
+      ) {
+        longUrlInput.value =
+          droppedText.trim();
       }
-    );
-
-    dropZone.addEventListener(
-      'dragleave',
-      () => {
-        dropZone.classList.remove(
-          'dragover'
-        );
-      }
-    );
-
-    dropZone.addEventListener(
-      'drop',
-      e => {
-        e.preventDefault();
-
-        dropZone.classList.remove(
-          'dragover'
-        );
-
-        const droppedText =
-          e.dataTransfer.getData(
-            'text'
-          );
-
-        if (
-          droppedText &&
-          isValidUrl(droppedText) &&
-          longUrlInput
-        ) {
-          longUrlInput.value =
-            droppedText.trim();
-        }
-      }
-    );
+    });
   }
 
-  // =========================================================
-  // EXPORT CSV
-  // =========================================================
-
+  // --- Export CSV ---
   if (exportCsvBtn) {
-    exportCsvBtn.addEventListener(
-      'click',
-      () => {
-        const activeUserLinks =
-          getUserLinks();
+    exportCsvBtn.addEventListener('click', () => {
+      const activeUserLinks =
+        getUserLinks();
 
-        if (
-          activeUserLinks.length === 0
-        ) {
-          showToast(
-            'No data available to export.'
-          );
-          return;
-        }
-
-        const headers = [
-          'Alias',
-          'Short URL',
-          'Original URL',
-          'Clicks',
-          'Created At'
-        ];
-
-        function csvEscape(value) {
-          return `"${String(value ?? '')
-            .replace(/"/g, '""')}"`;
-        }
-
-        const rows =
-          activeUserLinks.map(
-            link =>
-              [
-                csvEscape(link.alias),
-                csvEscape(link.shortUrl),
-                csvEscape(link.originalUrl),
-                Number(link.clicks || 0),
-                csvEscape(link.createdAt)
-              ].join(',')
-          );
-
-        const csv = [
-          headers.join(','),
-          ...rows
-        ].join('\n');
-
-        const blob =
-          new Blob(
-            [csv],
-            { type: 'text/csv;charset=utf-8;' }
-          );
-
-        const url =
-          URL.createObjectURL(blob);
-
-        const a =
-          document.createElement('a');
-
-        a.href = url;
-        a.download =
-          'linklite-export.csv';
-
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        URL.revokeObjectURL(url);
-
+      if (activeUserLinks.length === 0) {
         showToast(
-          'Exported links as CSV'
+          'No data available to export.'
         );
+        return;
       }
-    );
+
+      const headers =
+        'Alias,Short URL,Original URL,Clicks,Created At\n';
+
+      const rows =
+        activeUserLinks.map(
+          l =>
+            `"${escapeCsv(l.alias)}","${escapeCsv(
+              l.shortUrl
+            )}","${escapeCsv(
+              l.originalUrl
+            )}",${Number(
+              l.clicks || 0
+            )},"${escapeCsv(
+              l.createdAt
+            )}"`
+        );
+
+      const blob =
+        new Blob(
+          [headers + rows.join('\n')],
+          {
+            type: 'text/csv;charset=utf-8;'
+          }
+        );
+
+      const url =
+        window.URL.createObjectURL(blob);
+
+      const a =
+        document.createElement('a');
+
+      a.href = url;
+      a.download =
+        'linklite-export.csv';
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      window.URL.revokeObjectURL(url);
+
+      showToast(
+        'Exported links as CSV'
+      );
+    });
   }
 
-  // =========================================================
-  // CHARTS
-  // =========================================================
+  function escapeCsv(value) {
+    return String(value ?? '')
+      .replace(/"/g, '""');
+  }
 
+  // --- Analytics Charts ---
   function renderCharts() {
-    if (typeof Chart === 'undefined') {
-      return;
-    }
+    if (typeof Chart === 'undefined') return;
 
     const isDark =
-      document.documentElement
-        .getAttribute('data-theme') ===
-      'dark';
+      document.documentElement.getAttribute(
+        'data-theme'
+      ) === 'dark';
 
     const textColor =
       isDark
@@ -1494,23 +1229,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     activeUserLinks.forEach(link => {
-      if (!link.referrers) {
-        return;
-      }
-
-      Object.keys(referrerTotals)
-        .forEach(key => {
+      if (link.referrers) {
+        Object.keys(referrerTotals).forEach(key => {
           referrerTotals[key] +=
             Number(
               link.referrers[key] || 0
             );
         });
+      }
     });
 
-    // ---------------------------------------------------------
-    // CLICKS CHART
-    // ---------------------------------------------------------
-
+    // --- Clicks Chart ---
     const clicksElem =
       document.getElementById(
         'clicksChart'
@@ -1526,9 +1255,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const totalClicks =
         activeUserLinks.reduce(
-          (sum, link) =>
-            sum +
-            Number(link.clicks || 0),
+          (sum, l) =>
+            sum + Number(l.clicks || 0),
           0
         );
 
@@ -1544,25 +1272,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Total Clicks'
               ],
 
-              datasets: [
-                {
-                  label: 'Count',
+              datasets: [{
+                label: 'Count',
 
-                  data: [
-                    activeUserLinks.length,
-                    totalClicks
-                  ],
+                data: [
+                  activeUserLinks.length,
+                  totalClicks
+                ],
 
-                  borderColor:
-                    '#2563EB',
+                borderColor: '#2563EB',
 
-                  backgroundColor:
-                    'rgba(37, 99, 235, 0.1)',
+                backgroundColor:
+                  'rgba(37, 99, 235, 0.1)',
 
-                  fill: true,
-                  tension: 0.3
-                }
-              ]
+                fill: true,
+                tension: 0.3
+              }]
             },
 
             options: {
@@ -1602,10 +1327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // ---------------------------------------------------------
-    // REFERRER CHART
-    // ---------------------------------------------------------
-
+    // --- Referrer Chart ---
     const refElem =
       document.getElementById(
         'referrerChart'
@@ -1631,21 +1353,19 @@ document.addEventListener('DOMContentLoaded', () => {
                   referrerTotals
                 ),
 
-              datasets: [
-                {
-                  data:
-                    Object.values(
-                      referrerTotals
-                    ),
+              datasets: [{
+                data:
+                  Object.values(
+                    referrerTotals
+                  ),
 
-                  backgroundColor: [
-                    '#2563EB',
-                    '#16A34A',
-                    '#F59E0B',
-                    '#8B5CF6'
-                  ]
-                }
-              ]
+                backgroundColor: [
+                  '#2563EB',
+                  '#16A34A',
+                  '#F59E0B',
+                  '#8B5CF6'
+                ]
+              }]
             },
 
             options: {
@@ -1666,8 +1386,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Local Storage Helpers ---
+  function saveLinks() {
+    localStorage.setItem(
+      'linklite_links',
+      JSON.stringify(links)
+    );
+  }
+
+  // --- Toast ---
+  function showToast(message) {
+    const container =
+      document.getElementById(
+        'toastContainer'
+      );
+
+    if (!container) return;
+
+    const toast =
+      document.createElement('div');
+
+    toast.className = 'toast';
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
   // =========================================================
-  // INITIALIZE
+  // INITIAL EXECUTION
   // =========================================================
 
   initTheme();
@@ -1675,4 +1425,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDashboard();
   renderCharts();
 
+  // IMPORTANT:
+  // This MUST be called here, after registerClick,
+  // saveLinks, renderDashboard, etc. have been initialized.
+  handleHashRouting();
 });
