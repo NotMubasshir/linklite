@@ -1,9 +1,13 @@
 /**
  * LinkLite - Production Web Application Core Logic
+ * Updated / Bug-Fixed Version
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // --- State Management ---
+  // =========================================================
+  // STATE
+  // =========================================================
+
   let users = JSON.parse(localStorage.getItem('linklite_users')) || [];
   let currentUser = JSON.parse(localStorage.getItem('linklite_current_user')) || null;
   let links = JSON.parse(localStorage.getItem('linklite_links')) || [];
@@ -12,591 +16,28 @@ document.addEventListener('DOMContentLoaded', () => {
   let clicksChartInstance = null;
   let referrerChartInstance = null;
 
-  // --- Password Modal Elements ---
+  // =========================================================
+  // PASSWORD MODAL
+  // =========================================================
+
   const passwordModal = document.getElementById('passwordModal');
   const passwordForm = document.getElementById('passwordForm');
   const linkPasswordInput = document.getElementById('linkPasswordInput');
   const passwordError = document.getElementById('passwordError');
 
-  // --- Client-Side Routing for Hash Redirects & Password Checks ---
-  function handleHashRouting() {
-    if (window.location.hash) {
-      const hashVal = window.location.hash.substring(1);
-      // Ignore internal navigation anchors
-      if (!['hero', 'dashboard', 'analytics'].includes(hashVal)) {
-        const matchedLink = links.find(l => l.alias === hashVal);
-        if (matchedLink) {
-          if (isExpired(matchedLink.expiration)) {
-            showToast('This link has expired.');
-            return;
-          }
-
-          if (matchedLink.password) {
-            pendingRedirectLink = matchedLink;
-            if (passwordModal) {
-              passwordModal.classList.remove('hidden');
-              if (passwordError) passwordError.classList.add('hidden');
-            }
-          } else {
-            executeRedirect(matchedLink);
-          }
-        }
-      }
-    }
-  }
-
-  function executeRedirect(link) {
-    registerClick(link.id);
-    window.location.href = link.originalUrl;
-  }
-
-  // Handle password submission for protected links
-  if (passwordForm) {
-    passwordForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (!pendingRedirectLink) return;
-
-      const enteredPassword = linkPasswordInput.value;
-      if (enteredPassword === pendingRedirectLink.password) {
-        if (passwordError) passwordError.classList.add('hidden');
-        if (passwordModal) passwordModal.classList.add('hidden');
-        executeRedirect(pendingRedirectLink);
-      } else {
-        if (passwordError) passwordError.classList.remove('hidden');
-      }
-    });
-  }
-
-  // Listen to hash changes dynamically
-  window.addEventListener('hashchange', handleHashRouting);
-  handleHashRouting();
-
-  // --- DOM Elements ---
-  const shortenForm = document.getElementById('shortenForm');
-  const longUrlInput = document.getElementById('longUrlInput');
-  const customAliasInput = document.getElementById('customAlias');
-  const expirationDateInput = document.getElementById('expirationDate');
-  const passwordProtectInput = document.getElementById('passwordProtect');
-  
-  const resultCard = document.getElementById('resultCard');
-  const resultShortUrl = document.getElementById('resultShortUrl');
-  const resultOriginalUrl = document.getElementById('resultOriginalUrl');
-  const copyResultBtn = document.getElementById('copyResultBtn');
-  const openResultLink = document.getElementById('openResultLink');
-  const qrcodeContainer = document.getElementById('qrcode');
-  const downloadQrBtn = document.getElementById('downloadQrBtn');
-  
-  const linksTableBody = document.getElementById('linksTableBody');
-  const emptyState = document.getElementById('emptyState');
-  const searchInput = document.getElementById('searchInput');
-  const statusFilter = document.getElementById('statusFilter');
-  const sortSelect = document.getElementById('sortSelect');
-  const exportCsvBtn = document.getElementById('exportCsvBtn');
-  const themeToggleBtn = document.getElementById('themeToggleBtn');
-  const dropZone = document.getElementById('dropZone');
-
-  // Auth Elements
-  const openAuthBtn = document.getElementById('openAuthBtn');
-  const authModal = document.getElementById('authModal');
-  const closeAuthModal = document.getElementById('closeAuthModal');
-  const tabLoginBtn = document.getElementById('tabLoginBtn');
-  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
-  const loggedOutNav = document.getElementById('loggedOutNav');
-  const loggedInNav = document.getElementById('loggedInNav');
-  const userGreeting = document.getElementById('userGreeting');
-  const logoutBtn = document.getElementById('logoutBtn');
-
-  // --- Theme Controller ---
-  const initTheme = () => {
-    const savedTheme = localStorage.getItem('linklite_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  };
-
-  if (themeToggleBtn) {
-    themeToggleBtn.addEventListener('click', () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('linklite_theme', newTheme);
-      renderCharts();
-    });
-  }
-
-  // --- Auth System Logic ---
-  function updateAuthUI() {
-    if (currentUser) {
-      if (loggedOutNav) loggedOutNav.classList.add('hidden');
-      if (loggedInNav) loggedInNav.classList.remove('hidden');
-      if (userGreeting) userGreeting.textContent = `@${currentUser.username}`;
-    } else {
-      if (loggedOutNav) loggedOutNav.classList.remove('hidden');
-      if (loggedInNav) loggedInNav.classList.add('hidden');
-      if (userGreeting) userGreeting.textContent = '';
-    }
-  }
-
-  if (openAuthBtn) openAuthBtn.addEventListener('click', () => authModal.classList.remove('hidden'));
-  if (closeAuthModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
-
-  if (tabLoginBtn) {
-    tabLoginBtn.addEventListener('click', () => {
-      tabLoginBtn.classList.add('active');
-      if (tabRegisterBtn) tabRegisterBtn.classList.remove('active');
-      if (loginForm) loginForm.classList.remove('hidden');
-      if (registerForm) registerForm.classList.add('hidden');
-    });
-  }
-
-  if (tabRegisterBtn) {
-    tabRegisterBtn.addEventListener('click', () => {
-      tabRegisterBtn.classList.add('active');
-      if (tabLoginBtn) tabLoginBtn.classList.remove('active');
-      if (registerForm) registerForm.classList.remove('hidden');
-      if (loginForm) loginForm.classList.add('hidden');
-    });
-  }
-
-  // User Registration
-  if (registerForm) {
-    registerForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const username = document.getElementById('regUsername').value.trim().toLowerCase();
-      const email = document.getElementById('regEmail').value.trim().toLowerCase();
-      const password = document.getElementById('regPassword').value;
-
-      if (users.some(u => u.email === email)) {
-        showToast('Error: This email is already registered.');
-        return;
-      }
-      if (users.some(u => u.username === username)) {
-        showToast('Error: This username is already taken.');
-        return;
-      }
-
-      const newUser = { id: Date.now().toString(), username, email, password };
-      users.push(newUser);
-      localStorage.setItem('linklite_users', JSON.stringify(users));
-
-      currentUser = { id: newUser.id, username: newUser.username, email: newUser.email };
-      localStorage.setItem('linklite_current_user', JSON.stringify(currentUser));
-
-      updateAuthUI();
-      renderDashboard();
-      renderCharts();
-      if (authModal) authModal.classList.add('hidden');
-      registerForm.reset();
-      showToast(`Account created! Welcome @${newUser.username}`);
-    });
-  }
-
-  // User Login
-  if (loginForm) {
-    loginForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const identifier = document.getElementById('loginIdentifier').value.trim().toLowerCase();
-      const password = document.getElementById('loginPassword').value;
-
-      const matchedUser = users.find(u => (u.email === identifier || u.username === identifier) && u.password === password);
-
-      if (!matchedUser) {
-        showToast('Invalid credentials. Please try again.');
-        return;
-      }
-
-      currentUser = { id: matchedUser.id, username: matchedUser.username, email: matchedUser.email };
-      localStorage.setItem('linklite_current_user', JSON.stringify(currentUser));
-
-      updateAuthUI();
-      renderDashboard();
-      renderCharts();
-      if (authModal) authModal.classList.add('hidden');
-      loginForm.reset();
-      showToast(`Signed in as @${matchedUser.username}`);
-    });
-  }
-
-  // User Logout
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      currentUser = null;
-      localStorage.removeItem('linklite_current_user');
-      updateAuthUI();
-      renderDashboard();
-      renderCharts();
-      showToast('Logged out successfully');
-    });
-  }
-
-  // Helper to filter links by user scope
-  function getUserLinks() {
-    if (!currentUser) return links;
-    return links.filter(l => l.userId === currentUser.id);
-  }
-
-  // --- URL Shortening Logic ---
-  if (shortenForm) {
-    shortenForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const originalUrl = longUrlInput.value.trim();
-      if (!originalUrl) return;
-
-      const customAlias = customAliasInput ? customAliasInput.value.trim() : '';
-      const expiration = expirationDateInput ? expirationDateInput.value : '';
-      const password = passwordProtectInput ? passwordProtectInput.value : '';
-
-      if (customAlias && links.some(l => l.alias === customAlias)) {
-        showToast('Custom alias is already in use.');
-        return;
-      }
-
-      const alias = customAlias || generateAlias();
-      const baseUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
-      const shortUrl = `${baseUrl}#${alias}`;
-
-      const newLink = {
-        id: Date.now().toString(),
-        userId: currentUser ? currentUser.id : null,
-        originalUrl,
-        alias,
-        shortUrl,
-        createdAt: new Date().toISOString(),
-        expiration: expiration || null,
-        password: password || null,
-        clicks: 0,
-        isFavorite: false,
-        referrers: { Direct: 0, Google: 0, Twitter: 0, LinkedIn: 0 }
-      };
-
-      links.unshift(newLink);
-      saveLinks();
-      renderResult(newLink);
-      renderDashboard();
-      renderCharts();
-
-      shortenForm.reset();
-      showToast('URL shortened successfully!');
-    });
-  }
-
-  function generateAlias() {
-    return Math.random().toString(36).substring(2, 8);
-  }
-
-  function renderResult(link) {
-    if (resultShortUrl) resultShortUrl.value = link.shortUrl;
-    if (resultOriginalUrl) resultOriginalUrl.textContent = link.originalUrl;
-    if (openResultLink) openResultLink.href = link.shortUrl;
-    
-    if (qrcodeContainer) {
-      qrcodeContainer.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(qrcodeContainer, {
-          text: link.shortUrl,
-          width: 100,
-          height: 100,
-          colorDark: "#111827",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-      }
-    }
-
-    if (resultCard) {
-      resultCard.classList.remove('hidden');
-      resultCard.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-
-  // --- Clipboard Action ---
-  if (copyResultBtn) {
-    copyResultBtn.addEventListener('click', () => {
-      if (resultShortUrl) {
-        navigator.clipboard.writeText(resultShortUrl.value);
-        copyResultBtn.textContent = 'Copied!';
-        setTimeout(() => { copyResultBtn.textContent = 'Copy'; }, 2000);
-        showToast('Copied to clipboard');
-      }
-    });
-  }
-
-  // --- Download QR Code ---
-  if (downloadQrBtn) {
-    downloadQrBtn.addEventListener('click', () => {
-      if (!qrcodeContainer) return;
-      const img = qrcodeContainer.querySelector('img');
-      if (img && img.src) {
-        const a = document.createElement('a');
-        a.href = img.src;
-        a.download = 'linklite-qr.png';
-        a.click();
-      }
-    });
-  }
-
-  // --- Dashboard Renderer ---
-  function renderDashboard() {
-    const activeUserLinks = getUserLinks();
-
-    const totalLinks = activeUserLinks.length;
-    const totalClicks = activeUserLinks.reduce((sum, l) => sum + l.clicks, 0);
-    
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayClicks = activeUserLinks
-      .filter(l => l.createdAt.startsWith(todayStr))
-      .reduce((sum, l) => sum + l.clicks, 0);
-      
-    const activeLinks = activeUserLinks.filter(l => !isExpired(l.expiration)).length;
-
-    const metricTotalLinks = document.getElementById('metricTotalLinks');
-    const metricTotalClicks = document.getElementById('metricTotalClicks');
-    const metricTodayClicks = document.getElementById('metricTodayClicks');
-    const metricActiveLinks = document.getElementById('metricActiveLinks');
-
-    if (metricTotalLinks) metricTotalLinks.textContent = totalLinks;
-    if (metricTotalClicks) metricTotalClicks.textContent = totalClicks;
-    if (metricTodayClicks) metricTodayClicks.textContent = todayClicks;
-    if (metricActiveLinks) metricActiveLinks.textContent = activeLinks;
-
-    let filtered = [...activeUserLinks];
-
-    const query = searchInput ? searchInput.value.toLowerCase() : '';
-    if (query) {
-      filtered = filtered.filter(l => 
-        l.originalUrl.toLowerCase().includes(query) || 
-        l.alias.toLowerCase().includes(query)
-      );
-    }
-
-    const status = statusFilter ? statusFilter.value : 'all';
-    if (status === 'active') filtered = filtered.filter(l => !isExpired(l.expiration));
-    if (status === 'expired') filtered = filtered.filter(l => isExpired(l.expiration));
-    if (status === 'favorite') filtered = filtered.filter(l => l.isFavorite);
-
-    const sort = sortSelect ? sortSelect.value : 'newest';
-    if (sort === 'newest') filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    if (sort === 'oldest') filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    if (sort === 'clicks') filtered.sort((a, b) => b.clicks - a.clicks);
-
-    if (!linksTableBody) return;
-    linksTableBody.innerHTML = '';
-    
-    if (filtered.length === 0) {
-      if (emptyState) emptyState.classList.remove('hidden');
-    } else {
-      if (emptyState) emptyState.classList.add('hidden');
-      filtered.forEach(link => {
-        const tr = document.createElement('tr');
-        const expired = isExpired(link.expiration);
-
-        tr.innerHTML = `
-          <td>
-            <a href="${link.shortUrl}" target="_blank" onclick="registerClick('${link.id}')" style="font-weight: 600;">/${link.alias}</a>
-            ${link.password ? ' 🔒' : ''}
-          </td>
-          <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            ${link.originalUrl}
-          </td>
-          <td>${link.clicks}</td>
-          <td>
-            <span class="badge ${expired ? 'badge-danger' : 'badge-success'}">
-              ${expired ? 'Expired' : 'Active'}
-            </span>
-          </td>
-          <td>${new Date(link.createdAt).toLocaleDateString()}</td>
-          <td class="text-right">
-            <button class="btn btn-secondary btn-sm" onclick="toggleFavorite('${link.id}')">${link.isFavorite ? '★' : '☆'}</button>
-            <button class="btn btn-secondary btn-sm" onclick="copyLink('${link.shortUrl}')">Copy</button>
-            <button class="btn btn-secondary btn-sm" onclick="deleteLink('${link.id}')">Delete</button>
-          </td>
-        `;
-        linksTableBody.appendChild(tr);
-      });
-    }
-  }
-
-  function isExpired(expirationDate) {
-    if (!expirationDate) return false;
-    return new Date(expirationDate) < new Date();
-  }
-
-  // --- Global Helpers ---
-  window.registerClick = (id) => {
-    const link = links.find(l => l.id === id);
-    if (link) {
-      link.clicks += 1;
-      if (!link.referrers) {
-        link.referrers = { Direct: 0, Google: 0, Twitter: 0, LinkedIn: 0 };
-      }
-      link.referrers.Direct = (link.referrers.Direct || 0) + 1;
-      saveLinks();
-      renderDashboard();
-      renderCharts();
-    }
-  };
-
-  window.copyLink = (url) => {
-    navigator.clipboard.writeText(url);
-    showToast('Link copied to clipboard');
-  };
-
-  window.deleteLink = (id) => {
-    links = links.filter(l => l.id !== id);
-    saveLinks();
-    renderDashboard();
-    renderCharts();
-    showToast('Link deleted');
-  };
-
-  window.toggleFavorite = (id) => {
-    const link = links.find(l => l.id === id);
-    if (link) {
-      link.isFavorite = !link.isFavorite;
-      saveLinks();
-      renderDashboard();
-    }
-  };
-
-  // --- Filtering Listeners ---
-  if (searchInput) searchInput.addEventListener('input', renderDashboard);
-  if (statusFilter) statusFilter.addEventListener('change', renderDashboard);
-  if (sortSelect) sortSelect.addEventListener('change', renderDashboard);
-
-  // --- Drag and Drop ---
-  if (dropZone) {
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-      const droppedText = e.dataTransfer.getData('text');
-      if (droppedText && isValidUrl(droppedText) && longUrlInput) {
-        longUrlInput.value = droppedText;
-      }
-    });
-  }
-
-  function isValidUrl(string) {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // --- Export CSV ---
-  if (exportCsvBtn) {
-    exportCsvBtn.addEventListener('click', () => {
-      const activeUserLinks = getUserLinks();
-      if (activeUserLinks.length === 0) {
-        showToast('No data available to export.');
-        return;
-      }
-      const headers = ['Alias,Short URL,Original URL,Clicks,Created At\n'];
-      const rows = activeUserLinks.map(l => `"${l.alias}","${l.shortUrl}","${l.originalUrl}",${l.clicks},"${l.createdAt}"`);
-      const blob = new Blob([headers.concat(rows).join('\n')], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'linklite-export.csv';
-      a.click();
-      showToast('Exported links as CSV');
-    });
-  }
-
-  // --- Analytics Charts ---
-  function renderCharts() {
-    if (typeof Chart === 'undefined') return;
-
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#9CA3AF' : '#6B7280';
-    const gridColor = isDark ? '#1F2937' : '#E5E7EB';
-
-    const activeUserLinks = getUserLinks();
-
-    const referrerTotals = { Direct: 0, Google: 0, Twitter: 0, LinkedIn: 0 };
-    activeUserLinks.forEach(link => {
-      if (link.referrers) {
-        Object.keys(referrerTotals).forEach(key => {
-          referrerTotals[key] += link.referrers[key] || 0;
-        });
-      }
-    });
-
-    const clicksElem = document.getElementById('clicksChart');
-    if (clicksElem) {
-      const clicksCtx = clicksElem.getContext('2d');
-      if (clicksChartInstance) clicksChartInstance.destroy();
-
-      const totalClicks = activeUserLinks.reduce((sum, l) => sum + l.clicks, 0);
-
-      clicksChartInstance = new Chart(clicksCtx, {
-        type: 'line',
-        data: {
-          labels: ['Total Stored Links', 'Total Active Clicks'],
-          datasets: [{
-            label: 'Count',
-            data: [activeUserLinks.length, totalClicks],
-            borderColor: '#2563EB',
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            fill: true,
-            tension: 0.3
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: textColor }, grid: { color: gridColor } },
-            y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }
-          }
-        }
-      });
-    }
-
-    const refElem = document.getElementById('referrerChart');
-    if (refElem) {
-      const refCtx = refElem.getContext('2d');
-      if (referrerChartInstance) referrerChartInstance.destroy();
-
-      referrerChartInstance = new Chart(refCtx, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(referrerTotals),
-          datasets: [{
-            data: Object.values(referrerTotals),
-            backgroundColor: ['#2563EB', '#16A34A', '#F59E0B', '#8B5CF6']
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'bottom', labels: { color: textColor } }
-          }
-        }
-      });
-    }
-  }
-
-  // --- Local Storage Helpers ---
-  function saveLinks() {
-    localStorage.setItem('linklite_links', JSON.stringify(links));
-  }
+  // =========================================================
+  // UTILITY FUNCTIONS
+  // =========================================================
 
   function showToast(message) {
     const container = document.getElementById('toastContainer');
+
     if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
+
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -604,9 +45,1634 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
 
-  // --- Initial Execution ---
+  function saveLinks() {
+    localStorage.setItem('linklite_links', JSON.stringify(links));
+  }
+
+  function isExpired(expirationDate) {
+    if (!expirationDate) return false;
+
+    const expiration = new Date(expirationDate);
+
+    if (Number.isNaN(expiration.getTime())) {
+      return false;
+    }
+
+    return expiration < new Date();
+  }
+
+  function isValidUrl(value) {
+    try {
+      const url = new URL(value);
+
+      // Only allow normal web URLs
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function generateAlias() {
+    const characters =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+    let alias = '';
+
+    do {
+      alias = '';
+
+      for (let i = 0; i < 6; i++) {
+        alias += characters.charAt(
+          Math.floor(Math.random() * characters.length)
+        );
+      }
+    } while (links.some(link => link.alias === alias));
+
+    return alias;
+  }
+
+  function normalizeAlias(alias) {
+    return decodeURIComponent(alias || '').trim();
+  }
+
+  // =========================================================
+  // SHORT URL BASE
+  // =========================================================
+
+  function getBaseUrl() {
+    let pathname = window.location.pathname;
+
+    // Make sure the path points to the actual GitHub Pages directory
+    if (!pathname.endsWith('/')) {
+      pathname += '/';
+    }
+
+    return `${window.location.origin}${pathname}`;
+  }
+
+  function createShortUrl(alias) {
+    return `${getBaseUrl()}#${encodeURIComponent(alias)}`;
+  }
+
+  // =========================================================
+  // HASH ROUTING / REDIRECTION
+  // =========================================================
+
+  function handleHashRouting() {
+    const rawHash = window.location.hash;
+
+    if (!rawHash || rawHash.length <= 1) {
+      return;
+    }
+
+    const alias = normalizeAlias(rawHash.substring(1));
+
+    // Ignore normal page navigation hashes
+    const ignoredHashes = [
+      'hero',
+      'dashboard',
+      'analytics'
+    ];
+
+    if (!alias || ignoredHashes.includes(alias)) {
+      return;
+    }
+
+    // Find the shortened link from localStorage
+    const matchedLink = links.find(
+      link => String(link.alias).toLowerCase() === alias.toLowerCase()
+    );
+
+    if (!matchedLink) {
+      showToast('Short link not found.');
+
+      // Remove the invalid hash without reloading
+      history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search
+      );
+
+      return;
+    }
+
+    // Check expiration
+    if (isExpired(matchedLink.expiration)) {
+      showToast('This link has expired.');
+      return;
+    }
+
+    // Password protected link
+    if (matchedLink.password) {
+      pendingRedirectLink = matchedLink;
+
+      if (passwordModal) {
+        passwordModal.classList.remove('hidden');
+      }
+
+      if (passwordError) {
+        passwordError.classList.add('hidden');
+      }
+
+      if (linkPasswordInput) {
+        linkPasswordInput.value = '';
+        linkPasswordInput.focus();
+      }
+
+      return;
+    }
+
+    executeRedirect(matchedLink);
+  }
+
+  function executeRedirect(link) {
+    if (!link || !link.originalUrl) {
+      showToast('Invalid destination URL.');
+      return;
+    }
+
+    if (!isValidUrl(link.originalUrl)) {
+      showToast('Invalid destination URL.');
+      return;
+    }
+
+    registerClick(link.id);
+
+    // Use replace so the broken short-link page isn't left
+    // in browser history.
+    window.location.replace(link.originalUrl);
+  }
+
+  // =========================================================
+  // PASSWORD SUBMISSION
+  // =========================================================
+
+  if (passwordForm) {
+    passwordForm.addEventListener('submit', e => {
+      e.preventDefault();
+
+      if (!pendingRedirectLink) {
+        return;
+      }
+
+      const enteredPassword = linkPasswordInput
+        ? linkPasswordInput.value
+        : '';
+
+      if (enteredPassword === pendingRedirectLink.password) {
+        if (passwordError) {
+          passwordError.classList.add('hidden');
+        }
+
+        if (passwordModal) {
+          passwordModal.classList.add('hidden');
+        }
+
+        executeRedirect(pendingRedirectLink);
+      } else {
+        if (passwordError) {
+          passwordError.classList.remove('hidden');
+        }
+      }
+    });
+  }
+
+  window.addEventListener('hashchange', handleHashRouting);
+
+  // Run after the page is loaded
+  handleHashRouting();
+
+  // =========================================================
+  // DOM ELEMENTS
+  // =========================================================
+
+  const shortenForm = document.getElementById('shortenForm');
+  const longUrlInput = document.getElementById('longUrlInput');
+  const customAliasInput = document.getElementById('customAlias');
+  const expirationDateInput =
+    document.getElementById('expirationDate');
+  const passwordProtectInput =
+    document.getElementById('passwordProtect');
+
+  const resultCard = document.getElementById('resultCard');
+  const resultShortUrl = document.getElementById('resultShortUrl');
+  const resultOriginalUrl = document.getElementById('resultOriginalUrl');
+  const copyResultBtn = document.getElementById('copyResultBtn');
+  const openResultLink = document.getElementById('openResultLink');
+
+  const qrcodeContainer = document.getElementById('qrcode');
+  const downloadQrBtn = document.getElementById('downloadQrBtn');
+
+  const linksTableBody =
+    document.getElementById('linksTableBody');
+
+  const emptyState =
+    document.getElementById('emptyState');
+
+  const searchInput =
+    document.getElementById('searchInput');
+
+  const statusFilter =
+    document.getElementById('statusFilter');
+
+  const sortSelect =
+    document.getElementById('sortSelect');
+
+  const exportCsvBtn =
+    document.getElementById('exportCsvBtn');
+
+  const themeToggleBtn =
+    document.getElementById('themeToggleBtn');
+
+  const dropZone =
+    document.getElementById('dropZone');
+
+  // =========================================================
+  // AUTH ELEMENTS
+  // =========================================================
+
+  const openAuthBtn =
+    document.getElementById('openAuthBtn');
+
+  const authModal =
+    document.getElementById('authModal');
+
+  const closeAuthModal =
+    document.getElementById('closeAuthModal');
+
+  const tabLoginBtn =
+    document.getElementById('tabLoginBtn');
+
+  const tabRegisterBtn =
+    document.getElementById('tabRegisterBtn');
+
+  const loginForm =
+    document.getElementById('loginForm');
+
+  const registerForm =
+    document.getElementById('registerForm');
+
+  const loggedOutNav =
+    document.getElementById('loggedOutNav');
+
+  const loggedInNav =
+    document.getElementById('loggedInNav');
+
+  const userGreeting =
+    document.getElementById('userGreeting');
+
+  const logoutBtn =
+    document.getElementById('logoutBtn');
+
+  // =========================================================
+  // THEME
+  // =========================================================
+
+  function initTheme() {
+    const savedTheme =
+      localStorage.getItem('linklite_theme') || 'light';
+
+    document.documentElement.setAttribute(
+      'data-theme',
+      savedTheme
+    );
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme =
+        document.documentElement.getAttribute('data-theme');
+
+      const newTheme =
+        currentTheme === 'dark' ? 'light' : 'dark';
+
+      document.documentElement.setAttribute(
+        'data-theme',
+        newTheme
+      );
+
+      localStorage.setItem(
+        'linklite_theme',
+        newTheme
+      );
+
+      renderCharts();
+    });
+  }
+
+  // =========================================================
+  // AUTH UI
+  // =========================================================
+
+  function updateAuthUI() {
+    if (currentUser) {
+      if (loggedOutNav) {
+        loggedOutNav.classList.add('hidden');
+      }
+
+      if (loggedInNav) {
+        loggedInNav.classList.remove('hidden');
+      }
+
+      if (userGreeting) {
+        userGreeting.textContent =
+          `@${currentUser.username}`;
+      }
+    } else {
+      if (loggedOutNav) {
+        loggedOutNav.classList.remove('hidden');
+      }
+
+      if (loggedInNav) {
+        loggedInNav.classList.add('hidden');
+      }
+
+      if (userGreeting) {
+        userGreeting.textContent = '';
+      }
+    }
+  }
+
+  if (openAuthBtn && authModal) {
+    openAuthBtn.addEventListener('click', () => {
+      authModal.classList.remove('hidden');
+    });
+  }
+
+  if (closeAuthModal && authModal) {
+    closeAuthModal.addEventListener('click', () => {
+      authModal.classList.add('hidden');
+    });
+  }
+
+  // =========================================================
+  // AUTH TABS
+  // =========================================================
+
+  if (tabLoginBtn) {
+    tabLoginBtn.addEventListener('click', () => {
+      tabLoginBtn.classList.add('active');
+
+      if (tabRegisterBtn) {
+        tabRegisterBtn.classList.remove('active');
+      }
+
+      if (loginForm) {
+        loginForm.classList.remove('hidden');
+      }
+
+      if (registerForm) {
+        registerForm.classList.add('hidden');
+      }
+    });
+  }
+
+  if (tabRegisterBtn) {
+    tabRegisterBtn.addEventListener('click', () => {
+      tabRegisterBtn.classList.add('active');
+
+      if (tabLoginBtn) {
+        tabLoginBtn.classList.remove('active');
+      }
+
+      if (registerForm) {
+        registerForm.classList.remove('hidden');
+      }
+
+      if (loginForm) {
+        loginForm.classList.add('hidden');
+      }
+    });
+  }
+
+  // =========================================================
+  // REGISTER
+  // =========================================================
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const usernameElement =
+        document.getElementById('regUsername');
+
+      const emailElement =
+        document.getElementById('regEmail');
+
+      const passwordElement =
+        document.getElementById('regPassword');
+
+      const username =
+        usernameElement
+          ? usernameElement.value.trim().toLowerCase()
+          : '';
+
+      const email =
+        emailElement
+          ? emailElement.value.trim().toLowerCase()
+          : '';
+
+      const password =
+        passwordElement
+          ? passwordElement.value
+          : '';
+
+      if (!username || !email || !password) {
+        showToast('Please fill in all registration fields.');
+        return;
+      }
+
+      if (users.some(user => user.email === email)) {
+        showToast(
+          'Error: This email is already registered.'
+        );
+        return;
+      }
+
+      if (users.some(user => user.username === username)) {
+        showToast(
+          'Error: This username is already taken.'
+        );
+        return;
+      }
+
+      const newUser = {
+        id: crypto.randomUUID
+          ? crypto.randomUUID()
+          : Date.now().toString(),
+
+        username,
+        email,
+        password
+      };
+
+      users.push(newUser);
+
+      localStorage.setItem(
+        'linklite_users',
+        JSON.stringify(users)
+      );
+
+      currentUser = {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email
+      };
+
+      localStorage.setItem(
+        'linklite_current_user',
+        JSON.stringify(currentUser)
+      );
+
+      updateAuthUI();
+      renderDashboard();
+      renderCharts();
+
+      if (authModal) {
+        authModal.classList.add('hidden');
+      }
+
+      registerForm.reset();
+
+      showToast(
+        `Account created! Welcome @${newUser.username}`
+      );
+    });
+  }
+
+  // =========================================================
+  // LOGIN
+  // =========================================================
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const identifierElement =
+        document.getElementById('loginIdentifier');
+
+      const passwordElement =
+        document.getElementById('loginPassword');
+
+      const identifier =
+        identifierElement
+          ? identifierElement.value.trim().toLowerCase()
+          : '';
+
+      const password =
+        passwordElement
+          ? passwordElement.value
+          : '';
+
+      const matchedUser = users.find(user =>
+        (
+          user.email === identifier ||
+          user.username === identifier
+        ) &&
+        user.password === password
+      );
+
+      if (!matchedUser) {
+        showToast(
+          'Invalid credentials. Please try again.'
+        );
+        return;
+      }
+
+      currentUser = {
+        id: matchedUser.id,
+        username: matchedUser.username,
+        email: matchedUser.email
+      };
+
+      localStorage.setItem(
+        'linklite_current_user',
+        JSON.stringify(currentUser)
+      );
+
+      updateAuthUI();
+      renderDashboard();
+      renderCharts();
+
+      if (authModal) {
+        authModal.classList.add('hidden');
+      }
+
+      loginForm.reset();
+
+      showToast(
+        `Signed in as @${matchedUser.username}`
+      );
+    });
+  }
+
+  // =========================================================
+  // LOGOUT
+  // =========================================================
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      currentUser = null;
+
+      localStorage.removeItem(
+        'linklite_current_user'
+      );
+
+      updateAuthUI();
+      renderDashboard();
+      renderCharts();
+
+      showToast(
+        'Logged out successfully'
+      );
+    });
+  }
+
+  // =========================================================
+  // USER LINKS
+  // =========================================================
+
+  function getUserLinks() {
+    if (!currentUser) {
+      return links;
+    }
+
+    return links.filter(
+      link => link.userId === currentUser.id
+    );
+  }
+
+  // =========================================================
+  // URL SHORTENER
+  // =========================================================
+
+  if (shortenForm) {
+    shortenForm.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const originalUrl =
+        longUrlInput
+          ? longUrlInput.value.trim()
+          : '';
+
+      if (!originalUrl) {
+        showToast('Please enter a URL.');
+        return;
+      }
+
+      if (!isValidUrl(originalUrl)) {
+        showToast(
+          'Please enter a valid HTTP or HTTPS URL.'
+        );
+        return;
+      }
+
+      const customAlias =
+        customAliasInput
+          ? customAliasInput.value.trim()
+          : '';
+
+      const expiration =
+        expirationDateInput
+          ? expirationDateInput.value
+          : '';
+
+      const password =
+        passwordProtectInput
+          ? passwordProtectInput.value
+          : '';
+
+      // Validate custom alias
+      if (customAlias) {
+        if (!/^[a-zA-Z0-9_-]+$/.test(customAlias)) {
+          showToast(
+            'Alias can only contain letters, numbers, - and _.'
+          );
+          return;
+        }
+
+        if (
+          links.some(
+            link =>
+              String(link.alias).toLowerCase() ===
+              customAlias.toLowerCase()
+          )
+        ) {
+          showToast(
+            'Custom alias is already in use.'
+          );
+          return;
+        }
+      }
+
+      const alias =
+        customAlias || generateAlias();
+
+      const shortUrl =
+        createShortUrl(alias);
+
+      const newLink = {
+        id: crypto.randomUUID
+          ? crypto.randomUUID()
+          : Date.now().toString(),
+
+        userId:
+          currentUser
+            ? currentUser.id
+            : null,
+
+        originalUrl,
+        alias,
+        shortUrl,
+
+        createdAt:
+          new Date().toISOString(),
+
+        expiration:
+          expiration || null,
+
+        password:
+          password || null,
+
+        clicks: 0,
+
+        isFavorite: false,
+
+        referrers: {
+          Direct: 0,
+          Google: 0,
+          Twitter: 0,
+          LinkedIn: 0
+        }
+      };
+
+      links.unshift(newLink);
+
+      saveLinks();
+
+      renderResult(newLink);
+      renderDashboard();
+      renderCharts();
+
+      shortenForm.reset();
+
+      showToast(
+        'URL shortened successfully!'
+      );
+    });
+  }
+
+  // =========================================================
+  // RESULT
+  // =========================================================
+
+  function renderResult(link) {
+    if (resultShortUrl) {
+      resultShortUrl.value = link.shortUrl;
+    }
+
+    if (resultOriginalUrl) {
+      resultOriginalUrl.textContent =
+        link.originalUrl;
+    }
+
+    if (openResultLink) {
+      openResultLink.href =
+        link.shortUrl;
+    }
+
+    if (qrcodeContainer) {
+      qrcodeContainer.innerHTML = '';
+
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrcodeContainer, {
+          text: link.shortUrl,
+          width: 100,
+          height: 100,
+          colorDark: '#111827',
+          colorLight: '#ffffff',
+          correctLevel:
+            QRCode.CorrectLevel.H
+        });
+      }
+    }
+
+    if (resultCard) {
+      resultCard.classList.remove('hidden');
+
+      resultCard.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }
+
+  // =========================================================
+  // COPY RESULT
+  // =========================================================
+
+  async function copyToClipboard(text) {
+    if (!text) return false;
+
+    try {
+      if (
+        navigator.clipboard &&
+        window.isSecureContext
+      ) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+
+      const textarea =
+        document.createElement('textarea');
+
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+
+      document.body.appendChild(textarea);
+
+      textarea.focus();
+      textarea.select();
+
+      const successful =
+        document.execCommand('copy');
+
+      textarea.remove();
+
+      return successful;
+    } catch {
+      return false;
+    }
+  }
+
+  if (copyResultBtn) {
+    copyResultBtn.addEventListener(
+      'click',
+      async () => {
+        if (!resultShortUrl) return;
+
+        const copied =
+          await copyToClipboard(
+            resultShortUrl.value
+          );
+
+        if (copied) {
+          copyResultBtn.textContent =
+            'Copied!';
+
+          setTimeout(() => {
+            copyResultBtn.textContent =
+              'Copy';
+          }, 2000);
+
+          showToast(
+            'Copied to clipboard'
+          );
+        } else {
+          showToast(
+            'Unable to copy automatically.'
+          );
+        }
+      }
+    );
+  }
+
+  // =========================================================
+  // COPY LINK
+  // =========================================================
+
+  window.copyLink = async url => {
+    const copied =
+      await copyToClipboard(url);
+
+    if (copied) {
+      showToast(
+        'Link copied to clipboard'
+      );
+    } else {
+      showToast(
+        'Unable to copy link.'
+      );
+    }
+  };
+
+  // =========================================================
+  // DOWNLOAD QR
+  // =========================================================
+
+  if (downloadQrBtn) {
+    downloadQrBtn.addEventListener(
+      'click',
+      () => {
+        if (!qrcodeContainer) {
+          return;
+        }
+
+        const img =
+          qrcodeContainer.querySelector('img');
+
+        if (img && img.src) {
+          const a =
+            document.createElement('a');
+
+          a.href = img.src;
+          a.download =
+            'linklite-qr.png';
+
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } else {
+          showToast(
+            'QR code is not ready.'
+          );
+        }
+      }
+    );
+  }
+
+  // =========================================================
+  // DASHBOARD
+  // =========================================================
+
+  function renderDashboard() {
+    const activeUserLinks =
+      getUserLinks();
+
+    const totalLinks =
+      activeUserLinks.length;
+
+    const totalClicks =
+      activeUserLinks.reduce(
+        (sum, link) =>
+          sum + Number(link.clicks || 0),
+        0
+      );
+
+    const todayStr =
+      new Date()
+        .toISOString()
+        .split('T')[0];
+
+    // NOTE:
+    // This still represents links created today,
+    // because your current data model doesn't store
+    // individual click timestamps.
+    const todayClicks =
+      activeUserLinks
+        .filter(
+          link =>
+            link.createdAt &&
+            link.createdAt.startsWith(todayStr)
+        )
+        .reduce(
+          (sum, link) =>
+            sum + Number(link.clicks || 0),
+          0
+        );
+
+    const activeLinks =
+      activeUserLinks.filter(
+        link =>
+          !isExpired(link.expiration)
+      ).length;
+
+    const metricTotalLinks =
+      document.getElementById(
+        'metricTotalLinks'
+      );
+
+    const metricTotalClicks =
+      document.getElementById(
+        'metricTotalClicks'
+      );
+
+    const metricTodayClicks =
+      document.getElementById(
+        'metricTodayClicks'
+      );
+
+    const metricActiveLinks =
+      document.getElementById(
+        'metricActiveLinks'
+      );
+
+    if (metricTotalLinks) {
+      metricTotalLinks.textContent =
+        totalLinks;
+    }
+
+    if (metricTotalClicks) {
+      metricTotalClicks.textContent =
+        totalClicks;
+    }
+
+    if (metricTodayClicks) {
+      metricTodayClicks.textContent =
+        todayClicks;
+    }
+
+    if (metricActiveLinks) {
+      metricActiveLinks.textContent =
+        activeLinks;
+    }
+
+    let filtered =
+      [...activeUserLinks];
+
+    const query =
+      searchInput
+        ? searchInput.value
+            .trim()
+            .toLowerCase()
+        : '';
+
+    if (query) {
+      filtered =
+        filtered.filter(link =>
+          String(link.originalUrl)
+            .toLowerCase()
+            .includes(query) ||
+
+          String(link.alias)
+            .toLowerCase()
+            .includes(query)
+        );
+    }
+
+    const status =
+      statusFilter
+        ? statusFilter.value
+        : 'all';
+
+    if (status === 'active') {
+      filtered =
+        filtered.filter(
+          link =>
+            !isExpired(link.expiration)
+        );
+    }
+
+    if (status === 'expired') {
+      filtered =
+        filtered.filter(
+          link =>
+            isExpired(link.expiration)
+        );
+    }
+
+    if (status === 'favorite') {
+      filtered =
+        filtered.filter(
+          link => link.isFavorite
+        );
+    }
+
+    const sort =
+      sortSelect
+        ? sortSelect.value
+        : 'newest';
+
+    if (sort === 'newest') {
+      filtered.sort(
+        (a, b) =>
+          new Date(b.createdAt) -
+          new Date(a.createdAt)
+      );
+    }
+
+    if (sort === 'oldest') {
+      filtered.sort(
+        (a, b) =>
+          new Date(a.createdAt) -
+          new Date(b.createdAt)
+      );
+    }
+
+    if (sort === 'clicks') {
+      filtered.sort(
+        (a, b) =>
+          Number(b.clicks || 0) -
+          Number(a.clicks || 0)
+      );
+    }
+
+    if (!linksTableBody) {
+      return;
+    }
+
+    linksTableBody.innerHTML = '';
+
+    if (filtered.length === 0) {
+      if (emptyState) {
+        emptyState.classList.remove(
+          'hidden'
+        );
+      }
+
+      return;
+    }
+
+    if (emptyState) {
+      emptyState.classList.add(
+        'hidden'
+      );
+    }
+
+    filtered.forEach(link => {
+      const tr =
+        document.createElement('tr');
+
+      const expired =
+        isExpired(link.expiration);
+
+      const escapedOriginalUrl =
+        String(link.originalUrl)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+
+      tr.innerHTML = `
+        <td>
+          <a
+            href="${link.shortUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="font-weight: 600;"
+          >
+            /${link.alias}
+          </a>
+          ${link.password ? ' 🔒' : ''}
+        </td>
+
+        <td
+          style="
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          "
+          title="${escapedOriginalUrl}"
+        >
+          ${escapedOriginalUrl}
+        </td>
+
+        <td>${Number(link.clicks || 0)}</td>
+
+        <td>
+          <span
+            class="badge ${
+              expired
+                ? 'badge-danger'
+                : 'badge-success'
+            }"
+          >
+            ${
+              expired
+                ? 'Expired'
+                : 'Active'
+            }
+          </span>
+        </td>
+
+        <td>
+          ${new Date(
+            link.createdAt
+          ).toLocaleDateString()}
+        </td>
+
+        <td class="text-right">
+
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="toggleFavorite('${link.id}')"
+          >
+            ${
+              link.isFavorite
+                ? '★'
+                : '☆'
+            }
+          </button>
+
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="copyLink('${link.shortUrl}')"
+          >
+            Copy
+          </button>
+
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="deleteLink('${link.id}')"
+          >
+            Delete
+          </button>
+
+        </td>
+      `;
+
+      linksTableBody.appendChild(tr);
+    });
+  }
+
+  // =========================================================
+  // CLICK TRACKING
+  // =========================================================
+
+  window.registerClick = id => {
+    const link =
+      links.find(
+        item => item.id === id
+      );
+
+    if (!link) {
+      return;
+    }
+
+    link.clicks =
+      Number(link.clicks || 0) + 1;
+
+    if (!link.referrers) {
+      link.referrers = {
+        Direct: 0,
+        Google: 0,
+        Twitter: 0,
+        LinkedIn: 0
+      };
+    }
+
+    link.referrers.Direct =
+      Number(
+        link.referrers.Direct || 0
+      ) + 1;
+
+    saveLinks();
+
+    renderDashboard();
+    renderCharts();
+  };
+
+  // =========================================================
+  // DELETE
+  // =========================================================
+
+  window.deleteLink = id => {
+    const exists =
+      links.some(
+        link => link.id === id
+      );
+
+    if (!exists) {
+      return;
+    }
+
+    links =
+      links.filter(
+        link => link.id !== id
+      );
+
+    saveLinks();
+
+    renderDashboard();
+    renderCharts();
+
+    showToast(
+      'Link deleted'
+    );
+  };
+
+  // =========================================================
+  // FAVORITE
+  // =========================================================
+
+  window.toggleFavorite = id => {
+    const link =
+      links.find(
+        item => item.id === id
+      );
+
+    if (!link) {
+      return;
+    }
+
+    link.isFavorite =
+      !link.isFavorite;
+
+    saveLinks();
+    renderDashboard();
+  };
+
+  // =========================================================
+  // FILTERING
+  // =========================================================
+
+  if (searchInput) {
+    searchInput.addEventListener(
+      'input',
+      renderDashboard
+    );
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener(
+      'change',
+      renderDashboard
+    );
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener(
+      'change',
+      renderDashboard
+    );
+  }
+
+  // =========================================================
+  // DRAG AND DROP
+  // =========================================================
+
+  if (dropZone) {
+    dropZone.addEventListener(
+      'dragover',
+      e => {
+        e.preventDefault();
+
+        dropZone.classList.add(
+          'dragover'
+        );
+      }
+    );
+
+    dropZone.addEventListener(
+      'dragleave',
+      () => {
+        dropZone.classList.remove(
+          'dragover'
+        );
+      }
+    );
+
+    dropZone.addEventListener(
+      'drop',
+      e => {
+        e.preventDefault();
+
+        dropZone.classList.remove(
+          'dragover'
+        );
+
+        const droppedText =
+          e.dataTransfer.getData(
+            'text'
+          );
+
+        if (
+          droppedText &&
+          isValidUrl(droppedText) &&
+          longUrlInput
+        ) {
+          longUrlInput.value =
+            droppedText.trim();
+        }
+      }
+    );
+  }
+
+  // =========================================================
+  // EXPORT CSV
+  // =========================================================
+
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener(
+      'click',
+      () => {
+        const activeUserLinks =
+          getUserLinks();
+
+        if (
+          activeUserLinks.length === 0
+        ) {
+          showToast(
+            'No data available to export.'
+          );
+          return;
+        }
+
+        const headers = [
+          'Alias',
+          'Short URL',
+          'Original URL',
+          'Clicks',
+          'Created At'
+        ];
+
+        function csvEscape(value) {
+          return `"${String(value ?? '')
+            .replace(/"/g, '""')}"`;
+        }
+
+        const rows =
+          activeUserLinks.map(
+            link =>
+              [
+                csvEscape(link.alias),
+                csvEscape(link.shortUrl),
+                csvEscape(link.originalUrl),
+                Number(link.clicks || 0),
+                csvEscape(link.createdAt)
+              ].join(',')
+          );
+
+        const csv = [
+          headers.join(','),
+          ...rows
+        ].join('\n');
+
+        const blob =
+          new Blob(
+            [csv],
+            { type: 'text/csv;charset=utf-8;' }
+          );
+
+        const url =
+          URL.createObjectURL(blob);
+
+        const a =
+          document.createElement('a');
+
+        a.href = url;
+        a.download =
+          'linklite-export.csv';
+
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        URL.revokeObjectURL(url);
+
+        showToast(
+          'Exported links as CSV'
+        );
+      }
+    );
+  }
+
+  // =========================================================
+  // CHARTS
+  // =========================================================
+
+  function renderCharts() {
+    if (typeof Chart === 'undefined') {
+      return;
+    }
+
+    const isDark =
+      document.documentElement
+        .getAttribute('data-theme') ===
+      'dark';
+
+    const textColor =
+      isDark
+        ? '#9CA3AF'
+        : '#6B7280';
+
+    const gridColor =
+      isDark
+        ? '#1F2937'
+        : '#E5E7EB';
+
+    const activeUserLinks =
+      getUserLinks();
+
+    const referrerTotals = {
+      Direct: 0,
+      Google: 0,
+      Twitter: 0,
+      LinkedIn: 0
+    };
+
+    activeUserLinks.forEach(link => {
+      if (!link.referrers) {
+        return;
+      }
+
+      Object.keys(referrerTotals)
+        .forEach(key => {
+          referrerTotals[key] +=
+            Number(
+              link.referrers[key] || 0
+            );
+        });
+    });
+
+    // ---------------------------------------------------------
+    // CLICKS CHART
+    // ---------------------------------------------------------
+
+    const clicksElem =
+      document.getElementById(
+        'clicksChart'
+      );
+
+    if (clicksElem) {
+      const clicksCtx =
+        clicksElem.getContext('2d');
+
+      if (clicksChartInstance) {
+        clicksChartInstance.destroy();
+      }
+
+      const totalClicks =
+        activeUserLinks.reduce(
+          (sum, link) =>
+            sum +
+            Number(link.clicks || 0),
+          0
+        );
+
+      clicksChartInstance =
+        new Chart(
+          clicksCtx,
+          {
+            type: 'line',
+
+            data: {
+              labels: [
+                'Total Stored Links',
+                'Total Clicks'
+              ],
+
+              datasets: [
+                {
+                  label: 'Count',
+
+                  data: [
+                    activeUserLinks.length,
+                    totalClicks
+                  ],
+
+                  borderColor:
+                    '#2563EB',
+
+                  backgroundColor:
+                    'rgba(37, 99, 235, 0.1)',
+
+                  fill: true,
+                  tension: 0.3
+                }
+              ]
+            },
+
+            options: {
+              responsive: true,
+
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
+
+              scales: {
+                x: {
+                  ticks: {
+                    color: textColor
+                  },
+
+                  grid: {
+                    color: gridColor
+                  }
+                },
+
+                y: {
+                  ticks: {
+                    color: textColor
+                  },
+
+                  grid: {
+                    color: gridColor
+                  },
+
+                  beginAtZero: true
+                }
+              }
+            }
+          }
+        );
+    }
+
+    // ---------------------------------------------------------
+    // REFERRER CHART
+    // ---------------------------------------------------------
+
+    const refElem =
+      document.getElementById(
+        'referrerChart'
+      );
+
+    if (refElem) {
+      const refCtx =
+        refElem.getContext('2d');
+
+      if (referrerChartInstance) {
+        referrerChartInstance.destroy();
+      }
+
+      referrerChartInstance =
+        new Chart(
+          refCtx,
+          {
+            type: 'doughnut',
+
+            data: {
+              labels:
+                Object.keys(
+                  referrerTotals
+                ),
+
+              datasets: [
+                {
+                  data:
+                    Object.values(
+                      referrerTotals
+                    ),
+
+                  backgroundColor: [
+                    '#2563EB',
+                    '#16A34A',
+                    '#F59E0B',
+                    '#8B5CF6'
+                  ]
+                }
+              ]
+            },
+
+            options: {
+              responsive: true,
+
+              plugins: {
+                legend: {
+                  position: 'bottom',
+
+                  labels: {
+                    color: textColor
+                  }
+                }
+              }
+            }
+          }
+        );
+    }
+  }
+
+  // =========================================================
+  // INITIALIZE
+  // =========================================================
+
   initTheme();
   updateAuthUI();
   renderDashboard();
   renderCharts();
+
 });
