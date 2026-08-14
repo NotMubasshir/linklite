@@ -1,59 +1,104 @@
 /**
- * LinkLite - Production Web Application Core Logic
+ * LinkLite
+ * Supabase Auth + Supabase Database
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
-  // STATE MANAGEMENT
+  // SUPABASE CONFIG
   // =========================================================
 
-  let users =
-    JSON.parse(localStorage.getItem('linklite_users')) || [];
+  const SUPABASE_URL =
+    'YOUR_SUPABASE_PROJECT_URL';
 
-  let currentUser =
-    JSON.parse(
-      localStorage.getItem('linklite_current_user')
-    ) || null;
+  const SUPABASE_PUBLISHABLE_KEY =
+    'sb_publishable_-zBbU-ZisQCJaNIzI2NgSw_8MUwv67_';
 
-  let links =
-    JSON.parse(localStorage.getItem('linklite_links')) || [];
+  if (!window.supabase) {
+    console.error('Supabase JS failed to load.');
+    return;
+  }
 
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+  // =========================================================
+  // STATE
+  // =========================================================
+
+  let currentUser = null;
+  let profile = null;
+  let links = [];
   let pendingRedirectLink = null;
+  let redirectInProgress = false;
 
   let clicksChartInstance = null;
   let referrerChartInstance = null;
 
-  // Redirect delay in milliseconds
   const REDIRECT_DELAY = 2000;
 
   // =========================================================
-  // PASSWORD MODAL ELEMENTS
+  // DOM
   // =========================================================
 
-  const passwordModal =
-    document.getElementById('passwordModal');
+  const passwordModal = document.getElementById('passwordModal');
+  const passwordForm = document.getElementById('passwordForm');
+  const linkPasswordInput = document.getElementById('linkPasswordInput');
+  const passwordError = document.getElementById('passwordError');
 
-  const passwordForm =
-    document.getElementById('passwordForm');
+  const shortenForm = document.getElementById('shortenForm');
+  const longUrlInput = document.getElementById('longUrlInput');
+  const customAliasInput = document.getElementById('customAlias');
+  const expirationDateInput = document.getElementById('expirationDate');
+  const passwordProtectInput = document.getElementById('passwordProtect');
 
-  const linkPasswordInput =
-    document.getElementById('linkPasswordInput');
+  const resultCard = document.getElementById('resultCard');
+  const resultShortUrl = document.getElementById('resultShortUrl');
+  const resultOriginalUrl = document.getElementById('resultOriginalUrl');
+  const resultTime = document.getElementById('resultTime');
+  const copyResultBtn = document.getElementById('copyResultBtn');
+  const openResultLink = document.getElementById('openResultLink');
+  const qrcodeContainer = document.getElementById('qrcode');
+  const downloadQrBtn = document.getElementById('downloadQrBtn');
 
-  const passwordError =
-    document.getElementById('passwordError');
+  const linksTableBody = document.getElementById('linksTableBody');
+  const emptyState = document.getElementById('emptyState');
+
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const sortSelect = document.getElementById('sortSelect');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const dropZone = document.getElementById('dropZone');
+
+  const openAuthBtn = document.getElementById('openAuthBtn');
+  const authModal = document.getElementById('authModal');
+  const closeAuthModal = document.getElementById('closeAuthModal');
+
+  const tabLoginBtn = document.getElementById('tabLoginBtn');
+  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+
+  const loggedOutNav = document.getElementById('loggedOutNav');
+  const loggedInNav = document.getElementById('loggedInNav');
+  const userGreeting = document.getElementById('userGreeting');
+  const logoutBtn = document.getElementById('logoutBtn');
 
   // =========================================================
-  // UTILITY FUNCTIONS
+  // HELPERS
   // =========================================================
 
   function showToast(message) {
-    const container =
-      document.getElementById('toastContainer');
+    const container = document.getElementById('toastContainer');
 
     if (!container) return;
 
-    const toast =
-      document.createElement('div');
+    const toast = document.createElement('div');
 
     toast.className = 'toast';
     toast.textContent = message;
@@ -63,41 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       toast.remove();
     }, 3000);
-  }
-
-  function saveLinks() {
-    localStorage.setItem(
-      'linklite_links',
-      JSON.stringify(links)
-    );
-  }
-
-  function isExpired(expirationDate) {
-    if (!expirationDate) {
-      return false;
-    }
-
-    const expiration =
-      new Date(expirationDate);
-
-    if (Number.isNaN(expiration.getTime())) {
-      return false;
-    }
-
-    return expiration < new Date();
-  }
-
-  function isValidUrl(value) {
-    try {
-      const url = new URL(value);
-
-      return (
-        url.protocol === 'http:' ||
-        url.protocol === 'https:'
-      );
-    } catch (_) {
-      return false;
-    }
   }
 
   function escapeHtml(value) {
@@ -110,16 +120,58 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function escapeCsv(value) {
-    return String(value ?? '')
-      .replace(/"/g, '""');
+    return String(value ?? '').replace(/"/g, '""');
   }
 
-  // =========================================================
-  // URL / ALIAS GENERATION
-  // =========================================================
+  function isValidUrl(value) {
+    try {
+      const url = new URL(value);
+
+      return (
+        url.protocol === 'http:' ||
+        url.protocol === 'https:'
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function isExpired(expirationDate) {
+    if (!expirationDate) return false;
+
+    const date = new Date(expirationDate);
+
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    return date < new Date();
+  }
+
+  function normalizeAlias(alias) {
+    try {
+      return decodeURIComponent(alias).trim();
+    } catch {
+      return alias.trim();
+    }
+  }
+
+  function getBaseUrl() {
+    let path = window.location.pathname;
+
+    if (!path.endsWith('/')) {
+      path += '/';
+    }
+
+    return `${window.location.origin}${path}`;
+  }
+
+  function createShortUrl(alias) {
+    return `${getBaseUrl()}#${encodeURIComponent(alias)}`;
+  }
 
   function generateAlias() {
-    const characters =
+    const chars =
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
     let alias;
@@ -128,421 +180,59 @@ document.addEventListener('DOMContentLoaded', () => {
       alias = '';
 
       for (let i = 0; i < 6; i++) {
-        alias += characters.charAt(
-          Math.floor(
-            Math.random() * characters.length
-          )
+        alias += chars.charAt(
+          Math.floor(Math.random() * chars.length)
         );
       }
     } while (
       links.some(
-        link => link.alias === alias
+        link =>
+          String(link.alias).toLowerCase() ===
+          alias.toLowerCase()
       )
     );
 
     return alias;
   }
 
-  function normalizeAlias(alias) {
+  async function copyToClipboard(text) {
     try {
-      return decodeURIComponent(alias).trim();
-    } catch (_) {
-      return alias.trim();
-    }
-  }
-
-  function getBaseUrl() {
-    let pathname =
-      window.location.pathname;
-
-    if (!pathname.endsWith('/')) {
-      pathname += '/';
-    }
-
-    return (
-      window.location.origin +
-      pathname
-    );
-  }
-
-  function createShortUrl(alias) {
-    return (
-      getBaseUrl() +
-      '#' +
-      encodeURIComponent(alias)
-    );
-  }
-
-  // =========================================================
-  // HASH ROUTING
-  // =========================================================
-
-  function handleHashRouting() {
-    const hash =
-      window.location.hash;
-
-    if (!hash || hash.length <= 1) {
-      return;
-    }
-
-    const hashVal =
-      normalizeAlias(
-        hash.substring(1)
-      );
-
-    // Ignore normal page navigation anchors
-    if (
-      [
-        'hero',
-        'dashboard',
-        'analytics'
-      ].includes(hashVal)
-    ) {
-      return;
-    }
-
-    if (!hashVal) {
-      return;
-    }
-
-    const matchedLink =
-      links.find(
-        link =>
-          String(link.alias).toLowerCase() ===
-          hashVal.toLowerCase()
-      );
-
-    if (!matchedLink) {
-      showToast(
-        'Short link not found.'
-      );
-
-      return;
-    }
-
-    if (
-      isExpired(
-        matchedLink.expiration
-      )
-    ) {
-      showToast(
-        'This link has expired.'
-      );
-
-      return;
-    }
-
-    if (
-      !matchedLink.originalUrl ||
-      !isValidUrl(
-        matchedLink.originalUrl
-      )
-    ) {
-      showToast(
-        'This short link has an invalid destination.'
-      );
-
-      return;
-    }
-
-    // Password-protected link
-    if (matchedLink.password) {
-      pendingRedirectLink =
-        matchedLink;
-
-      if (passwordModal) {
-        passwordModal.classList.remove(
-          'hidden'
-        );
+      if (
+        navigator.clipboard &&
+        window.isSecureContext
+      ) {
+        await navigator.clipboard.writeText(text);
+        return true;
       }
 
-      if (passwordError) {
-        passwordError.classList.add(
-          'hidden'
-        );
-      }
+      const textarea = document.createElement('textarea');
 
-      if (linkPasswordInput) {
-        linkPasswordInput.value = '';
-        linkPasswordInput.focus();
-      }
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
 
-      return;
+      document.body.appendChild(textarea);
+
+      textarea.select();
+
+      const copied =
+        document.execCommand('copy');
+
+      textarea.remove();
+
+      return copied;
+    } catch {
+      return false;
     }
-
-    executeRedirect(
-      matchedLink
-    );
   }
 
   // =========================================================
-  // REDIRECT
-  // =========================================================
-
-  function executeRedirect(link) {
-    if (
-      !link ||
-      !link.originalUrl
-    ) {
-      showToast(
-        'Invalid destination URL.'
-      );
-
-      return;
-    }
-
-    if (
-      !isValidUrl(
-        link.originalUrl
-      )
-    ) {
-      showToast(
-        'Invalid destination URL.'
-      );
-
-      return;
-    }
-
-    // Register click BEFORE redirect
-    registerClick(
-      link.id
-    );
-
-    // Give the page a small delay before redirecting
-    setTimeout(() => {
-      window.location.replace(
-        link.originalUrl
-      );
-    }, REDIRECT_DELAY);
-  }
-
-  // =========================================================
-  // PASSWORD SUBMISSION
-  // =========================================================
-
-  if (passwordForm) {
-    passwordForm.addEventListener(
-      'submit',
-      e => {
-        e.preventDefault();
-
-        if (!pendingRedirectLink) {
-          return;
-        }
-
-        const enteredPassword =
-          linkPasswordInput
-            ? linkPasswordInput.value
-            : '';
-
-        if (
-          enteredPassword ===
-          pendingRedirectLink.password
-        ) {
-          if (passwordError) {
-            passwordError.classList.add(
-              'hidden'
-            );
-          }
-
-          if (passwordModal) {
-            passwordModal.classList.add(
-              'hidden'
-            );
-          }
-
-          executeRedirect(
-            pendingRedirectLink
-          );
-        } else {
-          if (passwordError) {
-            passwordError.classList.remove(
-              'hidden'
-            );
-          }
-        }
-      }
-    );
-  }
-
-  // Listen for hash changes
-  window.addEventListener(
-    'hashchange',
-    handleHashRouting
-  );
-
-  // =========================================================
-  // DOM ELEMENTS
-  // =========================================================
-
-  const shortenForm =
-    document.getElementById(
-      'shortenForm'
-    );
-
-  const longUrlInput =
-    document.getElementById(
-      'longUrlInput'
-    );
-
-  const customAliasInput =
-    document.getElementById(
-      'customAlias'
-    );
-
-  const expirationDateInput =
-    document.getElementById(
-      'expirationDate'
-    );
-
-  const passwordProtectInput =
-    document.getElementById(
-      'passwordProtect'
-    );
-
-  const resultCard =
-    document.getElementById(
-      'resultCard'
-    );
-
-  const resultShortUrl =
-    document.getElementById(
-      'resultShortUrl'
-    );
-
-  const resultOriginalUrl =
-    document.getElementById(
-      'resultOriginalUrl'
-    );
-
-  const copyResultBtn =
-    document.getElementById(
-      'copyResultBtn'
-    );
-
-  const openResultLink =
-    document.getElementById(
-      'openResultLink'
-    );
-
-  const qrcodeContainer =
-    document.getElementById(
-      'qrcode'
-    );
-
-  const downloadQrBtn =
-    document.getElementById(
-      'downloadQrBtn'
-    );
-
-  const linksTableBody =
-    document.getElementById(
-      'linksTableBody'
-    );
-
-  const emptyState =
-    document.getElementById(
-      'emptyState'
-    );
-
-  const searchInput =
-    document.getElementById(
-      'searchInput'
-    );
-
-  const statusFilter =
-    document.getElementById(
-      'statusFilter'
-    );
-
-  const sortSelect =
-    document.getElementById(
-      'sortSelect'
-    );
-
-  const exportCsvBtn =
-    document.getElementById(
-      'exportCsvBtn'
-    );
-
-  const themeToggleBtn =
-    document.getElementById(
-      'themeToggleBtn'
-    );
-
-  const dropZone =
-    document.getElementById(
-      'dropZone'
-    );
-
-  // =========================================================
-  // AUTH ELEMENTS
-  // =========================================================
-
-  const openAuthBtn =
-    document.getElementById(
-      'openAuthBtn'
-    );
-
-  const authModal =
-    document.getElementById(
-      'authModal'
-    );
-
-  const closeAuthModal =
-    document.getElementById(
-      'closeAuthModal'
-    );
-
-  const tabLoginBtn =
-    document.getElementById(
-      'tabLoginBtn'
-    );
-
-  const tabRegisterBtn =
-    document.getElementById(
-      'tabRegisterBtn'
-    );
-
-  const loginForm =
-    document.getElementById(
-      'loginForm'
-    );
-
-  const registerForm =
-    document.getElementById(
-      'registerForm'
-    );
-
-  const loggedOutNav =
-    document.getElementById(
-      'loggedOutNav'
-    );
-
-  const loggedInNav =
-    document.getElementById(
-      'loggedInNav'
-    );
-
-  const userGreeting =
-    document.getElementById(
-      'userGreeting'
-    );
-
-  const logoutBtn =
-    document.getElementById(
-      'logoutBtn'
-    );
-
-  // =========================================================
-  // THEME CONTROLLER
+  // THEME
   // =========================================================
 
   function initTheme() {
     const savedTheme =
-      localStorage.getItem(
-        'linklite_theme'
-      ) || 'light';
+      localStorage.getItem('linklite_theme') || 'light';
 
     document.documentElement.setAttribute(
       'data-theme',
@@ -551,68 +241,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (themeToggleBtn) {
-    themeToggleBtn.addEventListener(
-      'click',
-      () => {
-        const currentTheme =
-          document.documentElement.getAttribute(
-            'data-theme'
-          );
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme =
+        document.documentElement.getAttribute('data-theme');
 
-        const newTheme =
-          currentTheme === 'dark'
-            ? 'light'
-            : 'dark';
+      const newTheme =
+        currentTheme === 'dark'
+          ? 'light'
+          : 'dark';
 
-        document.documentElement.setAttribute(
-          'data-theme',
-          newTheme
-        );
+      document.documentElement.setAttribute(
+        'data-theme',
+        newTheme
+      );
 
-        localStorage.setItem(
-          'linklite_theme',
-          newTheme
-        );
+      localStorage.setItem(
+        'linklite_theme',
+        newTheme
+      );
 
-        renderCharts();
-      }
-    );
+      renderCharts();
+    });
   }
 
   // =========================================================
-  // AUTH SYSTEM
+  // AUTH UI
   // =========================================================
 
   function updateAuthUI() {
     if (currentUser) {
-      if (loggedOutNav) {
-        loggedOutNav.classList.add(
-          'hidden'
-        );
-      }
-
-      if (loggedInNav) {
-        loggedInNav.classList.remove(
-          'hidden'
-        );
-      }
+      loggedOutNav?.classList.add('hidden');
+      loggedInNav?.classList.remove('hidden');
 
       if (userGreeting) {
         userGreeting.textContent =
-          `@${currentUser.username}`;
+          `@${profile?.username || currentUser.email}`;
       }
     } else {
-      if (loggedOutNav) {
-        loggedOutNav.classList.remove(
-          'hidden'
-        );
-      }
-
-      if (loggedInNav) {
-        loggedInNav.classList.add(
-          'hidden'
-        );
-      }
+      loggedOutNav?.classList.remove('hidden');
+      loggedInNav?.classList.add('hidden');
 
       if (userGreeting) {
         userGreeting.textContent = '';
@@ -620,223 +287,200 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Open auth modal
-  if (
-    openAuthBtn &&
-    authModal
-  ) {
-    openAuthBtn.addEventListener(
-      'click',
-      () => {
-        authModal.classList.remove(
-          'hidden'
-        );
-      }
-    );
-  }
+  // =========================================================
+  // LOAD PROFILE
+  // =========================================================
 
-  // Close auth modal
-  if (
-    closeAuthModal &&
-    authModal
-  ) {
-    closeAuthModal.addEventListener(
-      'click',
-      () => {
-        authModal.classList.add(
-          'hidden'
-        );
-      }
-    );
+  async function loadProfile() {
+    if (!currentUser) {
+      profile = null;
+      updateAuthUI();
+      return;
+    }
+
+    const { data, error } =
+      await supabaseClient
+        .from('profiles')
+        .select('id, username')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+    if (error) {
+      console.error('Profile load error:', error);
+      profile = null;
+    } else {
+      profile = data;
+    }
+
+    updateAuthUI();
   }
 
   // =========================================================
-  // AUTH TABS
+  // LOAD USER LINKS
   // =========================================================
 
-  if (tabLoginBtn) {
-    tabLoginBtn.addEventListener(
-      'click',
-      () => {
-        tabLoginBtn.classList.add(
-          'active'
-        );
+  async function loadUserLinks() {
+    if (!currentUser) {
+      links = [];
+      renderDashboard();
+      renderCharts();
+      return;
+    }
 
-        if (tabRegisterBtn) {
-          tabRegisterBtn.classList.remove(
-            'active'
-          );
-        }
+    const { data, error } =
+      await supabaseClient
+        .from('links')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', {
+          ascending: false
+        });
 
-        if (loginForm) {
-          loginForm.classList.remove(
-            'hidden'
-          );
-        }
+    if (error) {
+      console.error('Links load error:', error);
+      showToast('Could not load your links.');
+      return;
+    }
 
-        if (registerForm) {
-          registerForm.classList.add(
-            'hidden'
-          );
-        }
+    links = (data || []).map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      alias: row.alias,
+      originalUrl: row.original_url,
+      shortUrl: createShortUrl(row.alias),
+      createdAt: row.created_at,
+      expiration: row.expiration || null,
+      password: row.password || null,
+      clicks: Number(row.clicks || 0),
+      isFavorite: Boolean(row.is_favorite),
+      referrers: row.referrers || {
+        Direct: 0,
+        Google: 0,
+        Twitter: 0,
+        LinkedIn: 0
       }
-    );
-  }
+    }));
 
-  if (tabRegisterBtn) {
-    tabRegisterBtn.addEventListener(
-      'click',
-      () => {
-        tabRegisterBtn.classList.add(
-          'active'
-        );
-
-        if (tabLoginBtn) {
-          tabLoginBtn.classList.remove(
-            'active'
-          );
-        }
-
-        if (registerForm) {
-          registerForm.classList.remove(
-            'hidden'
-          );
-        }
-
-        if (loginForm) {
-          loginForm.classList.add(
-            'hidden'
-          );
-        }
-      }
-    );
+    renderDashboard();
+    renderCharts();
   }
 
   // =========================================================
-  // REGISTRATION
+  // AUTH STATE
+  // =========================================================
+
+  const {
+    data: authListener
+  } = supabaseClient.auth.onAuthStateChange(
+    async (_event, session) => {
+      currentUser = session?.user || null;
+
+      await loadProfile();
+      await loadUserLinks();
+      updateAuthUI();
+    }
+  );
+
+  // =========================================================
+  // REGISTER
   // =========================================================
 
   if (registerForm) {
-    registerForm.addEventListener(
-      'submit',
-      e => {
-        e.preventDefault();
+    registerForm.addEventListener('submit', async e => {
+      e.preventDefault();
 
-        const usernameElement =
-          document.getElementById(
-            'regUsername'
-          );
+      const username =
+        document.getElementById('regUsername')?.value
+          .trim()
+          .toLowerCase();
 
-        const emailElement =
-          document.getElementById(
-            'regEmail'
-          );
+      const email =
+        document.getElementById('regEmail')?.value
+          .trim()
+          .toLowerCase();
 
-        const passwordElement =
-          document.getElementById(
-            'regPassword'
-          );
+      const password =
+        document.getElementById('regPassword')?.value;
 
-        const username =
-          usernameElement
-            ? usernameElement.value
-                .trim()
-                .toLowerCase()
-            : '';
+      if (!username || !email || !password) {
+        showToast('Please fill in all fields.');
+        return;
+      }
 
-        const email =
-          emailElement
-            ? emailElement.value
-                .trim()
-                .toLowerCase()
-            : '';
+      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+        showToast(
+          'Username must be 3-20 characters and use only letters, numbers, and _.'
+        );
+        return;
+      }
 
-        const password =
-          passwordElement
-            ? passwordElement.value
-            : '';
+      // Check username
+      const {
+        data: existingUsername,
+        error: usernameError
+      } =
+        await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .maybeSingle();
 
-        if (
-          !username ||
-          !email ||
-          !password
-        ) {
-          showToast(
-            'Please fill in all fields.'
-          );
+      if (usernameError) {
+        console.error(usernameError);
+        showToast('Could not check username.');
+        return;
+      }
 
-          return;
-        }
+      if (existingUsername) {
+        showToast('Username is already taken.');
+        return;
+      }
 
-        if (
-          users.some(
-            user => user.email === email
-          )
-        ) {
-          showToast(
-            'Error: This email is already registered.'
-          );
+      const redirectUrl =
+        window.location.origin +
+        window.location.pathname;
 
-          return;
-        }
-
-        if (
-          users.some(
-            user =>
-              user.username === username
-          )
-        ) {
-          showToast(
-            'Error: This username is already taken.'
-          );
-
-          return;
-        }
-
-        const newUser = {
-          id: Date.now().toString(),
-          username,
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.auth.signUp({
           email,
-          password
-        };
+          password,
+          options: {
+            data: {
+              username
+            },
+            emailRedirectTo: redirectUrl
+          }
+        });
 
-        users.push(newUser);
+      if (error) {
+        console.error(error);
+        showToast(error.message);
+        return;
+      }
 
-        localStorage.setItem(
-          'linklite_users',
-          JSON.stringify(users)
+      if (data.session) {
+        showToast(
+          `Account created! Welcome @${username}`
         );
 
-        currentUser = {
-          id: newUser.id,
-          username: newUser.username,
-          email: newUser.email
-        };
-
-        localStorage.setItem(
-          'linklite_current_user',
-          JSON.stringify(
-            currentUser
-          )
-        );
-
-        updateAuthUI();
-        renderDashboard();
-        renderCharts();
-
-        if (authModal) {
-          authModal.classList.add(
-            'hidden'
-          );
-        }
-
+        authModal?.classList.add('hidden');
         registerForm.reset();
 
+        currentUser = data.user;
+
+        await loadProfile();
+        await loadUserLinks();
+      } else {
         showToast(
-          `Account created! Welcome @${newUser.username}`
+          'Account created. Check your email to confirm your account.'
         );
+
+        registerForm.reset();
       }
-    );
+    });
   }
 
   // =========================================================
@@ -844,84 +488,50 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================
 
   if (loginForm) {
-    loginForm.addEventListener(
-      'submit',
-      e => {
-        e.preventDefault();
+    loginForm.addEventListener('submit', async e => {
+      e.preventDefault();
 
-        const identifierElement =
-          document.getElementById(
-            'loginIdentifier'
-          );
+      const email =
+        document.getElementById('loginIdentifier')?.value
+          .trim()
+          .toLowerCase();
 
-        const passwordElement =
-          document.getElementById(
-            'loginPassword'
-          );
+      const password =
+        document.getElementById('loginPassword')?.value;
 
-        const identifier =
-          identifierElement
-            ? identifierElement.value
-                .trim()
-                .toLowerCase()
-            : '';
-
-        const password =
-          passwordElement
-            ? passwordElement.value
-            : '';
-
-        const matchedUser =
-          users.find(
-            user =>
-              (
-                user.email ===
-                  identifier ||
-                user.username ===
-                  identifier
-              ) &&
-              user.password ===
-                password
-          );
-
-        if (!matchedUser) {
-          showToast(
-            'Invalid credentials. Please try again.'
-          );
-
-          return;
-        }
-
-        currentUser = {
-          id: matchedUser.id,
-          username: matchedUser.username,
-          email: matchedUser.email
-        };
-
-        localStorage.setItem(
-          'linklite_current_user',
-          JSON.stringify(
-            currentUser
-          )
-        );
-
-        updateAuthUI();
-        renderDashboard();
-        renderCharts();
-
-        if (authModal) {
-          authModal.classList.add(
-            'hidden'
-          );
-        }
-
-        loginForm.reset();
-
-        showToast(
-          `Signed in as @${matchedUser.username}`
-        );
+      if (!email || !password) {
+        showToast('Enter your email and password.');
+        return;
       }
-    );
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+      if (error) {
+        console.error(error);
+        showToast('Invalid email or password.');
+        return;
+      }
+
+      currentUser = data.user;
+
+      await loadProfile();
+      await loadUserLinks();
+      updateAuthUI();
+
+      authModal?.classList.add('hidden');
+      loginForm.reset();
+
+      showToast(
+        `Signed in as @${profile?.username || email}`
+      );
+    });
   }
 
   // =========================================================
@@ -929,189 +539,232 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================
 
   if (logoutBtn) {
-    logoutBtn.addEventListener(
-      'click',
-      () => {
-        currentUser = null;
+    logoutBtn.addEventListener('click', async () => {
+      const { error } =
+        await supabaseClient.auth.signOut();
 
-        localStorage.removeItem(
-          'linklite_current_user'
-        );
-
-        updateAuthUI();
-        renderDashboard();
-        renderCharts();
-
-        showToast(
-          'Logged out successfully'
-        );
+      if (error) {
+        console.error(error);
+        showToast('Could not log out.');
+        return;
       }
-    );
+
+      currentUser = null;
+      profile = null;
+      links = [];
+
+      updateAuthUI();
+      renderDashboard();
+      renderCharts();
+
+      showToast('Logged out successfully.');
+    });
   }
 
   // =========================================================
-  // USER LINKS
+  // AUTH MODAL
   // =========================================================
 
-  function getUserLinks() {
-    if (!currentUser) {
-      return links;
-    }
+  openAuthBtn?.addEventListener('click', () => {
+    authModal?.classList.remove('hidden');
+  });
 
-    return links.filter(
-      link =>
-        link.userId ===
-        currentUser.id
-    );
-  }
+  closeAuthModal?.addEventListener('click', () => {
+    authModal?.classList.add('hidden');
+  });
+
+  tabLoginBtn?.addEventListener('click', () => {
+    tabLoginBtn.classList.add('active');
+    tabRegisterBtn?.classList.remove('active');
+
+    loginForm?.classList.remove('hidden');
+    registerForm?.classList.add('hidden');
+  });
+
+  tabRegisterBtn?.addEventListener('click', () => {
+    tabRegisterBtn.classList.add('active');
+    tabLoginBtn?.classList.remove('active');
+
+    registerForm?.classList.remove('hidden');
+    loginForm?.classList.add('hidden');
+  });
 
   // =========================================================
-  // URL SHORTENING
+  // CREATE SHORT LINK
   // =========================================================
 
   if (shortenForm) {
-    shortenForm.addEventListener(
-      'submit',
-      e => {
-        e.preventDefault();
+    shortenForm.addEventListener('submit', async e => {
+      e.preventDefault();
 
-        const originalUrl =
-          longUrlInput
-            ? longUrlInput.value.trim()
-            : '';
-
-        if (!originalUrl) {
-          showToast(
-            'Please enter a URL.'
-          );
-
-          return;
-        }
-
-        if (
-          !isValidUrl(
-            originalUrl
-          )
-        ) {
-          showToast(
-            'Please enter a valid URL starting with http:// or https://'
-          );
-
-          return;
-        }
-
-        const customAlias =
-          customAliasInput
-            ? customAliasInput.value.trim()
-            : '';
-
-        const expiration =
-          expirationDateInput
-            ? expirationDateInput.value
-            : '';
-
-        const password =
-          passwordProtectInput
-            ? passwordProtectInput.value
-            : '';
-
-        // Custom alias validation
-        if (customAlias) {
-          if (
-            !/^[a-zA-Z0-9_-]+$/.test(
-              customAlias
-            )
-          ) {
-            showToast(
-              'Alias can only contain letters, numbers, - and _.'
-            );
-
-            return;
-          }
-
-          if (
-            links.some(
-              link =>
-                String(
-                  link.alias
-                ).toLowerCase() ===
-                customAlias.toLowerCase()
-            )
-          ) {
-            showToast(
-              'Custom alias is already in use.'
-            );
-
-            return;
-          }
-        }
-
-        const alias =
-          customAlias ||
-          generateAlias();
-
-        const shortUrl =
-          createShortUrl(
-            alias
-          );
-
-        const newLink = {
-          id: Date.now().toString(),
-
-          userId:
-            currentUser
-              ? currentUser.id
-              : null,
-
-          originalUrl,
-          alias,
-          shortUrl,
-
-          createdAt:
-            new Date().toISOString(),
-
-          expiration:
-            expiration || null,
-
-          password:
-            password || null,
-
-          clicks: 0,
-
-          isFavorite: false,
-
-          referrers: {
-            Direct: 0,
-            Google: 0,
-            Twitter: 0,
-            LinkedIn: 0
-          }
-        };
-
-        links.unshift(
-          newLink
-        );
-
-        saveLinks();
-
-        renderResult(
-          newLink
-        );
-
-        renderDashboard();
-        renderCharts();
-
-        shortenForm.reset();
-
-        showToast(
-          'URL shortened successfully!'
-        );
+      if (!currentUser) {
+        showToast('Please sign in first.');
+        authModal?.classList.remove('hidden');
+        return;
       }
-    );
+
+      const originalUrl =
+        longUrlInput?.value.trim();
+
+      const customAlias =
+        customAliasInput?.value.trim();
+
+      const expirationValue =
+        expirationDateInput?.value;
+
+      const password =
+        passwordProtectInput?.value;
+
+      if (!originalUrl) {
+        showToast('Enter a URL.');
+        return;
+      }
+
+      if (!isValidUrl(originalUrl)) {
+        showToast(
+          'Enter a valid HTTP or HTTPS URL.'
+        );
+        return;
+      }
+
+      if (customAlias) {
+        if (!/^[a-zA-Z0-9_-]+$/.test(customAlias)) {
+          showToast(
+            'Alias can only contain letters, numbers, - and _.'
+          );
+          return;
+        }
+
+        const {
+          data: existingAlias,
+          error: aliasError
+        } =
+          await supabaseClient
+            .from('links')
+            .select('id')
+            .eq('alias', customAlias)
+            .maybeSingle();
+
+        if (aliasError) {
+          console.error(aliasError);
+          showToast('Could not check alias.');
+          return;
+        }
+
+        if (existingAlias) {
+          showToast('That alias is already in use.');
+          return;
+        }
+      }
+
+      let alias =
+        customAlias || generateAlias();
+
+      // Avoid duplicate generated aliases
+      if (!customAlias) {
+        let attempts = 0;
+
+        while (attempts < 10) {
+          const {
+            data: exists
+          } =
+            await supabaseClient
+              .from('links')
+              .select('id')
+              .eq('alias', alias)
+              .maybeSingle();
+
+          if (!exists) break;
+
+          alias = generateAlias();
+          attempts++;
+        }
+      }
+
+      let expiration = null;
+
+      if (expirationValue) {
+        const date = new Date(
+          `${expirationValue}T23:59:59`
+        );
+
+        if (!Number.isNaN(date.getTime())) {
+          expiration = date.toISOString();
+        }
+      }
+
+      const row = {
+        user_id: currentUser.id,
+        alias,
+        original_url: originalUrl,
+        expiration,
+        password: password || null,
+        clicks: 0,
+        is_favorite: false,
+        referrers: {
+          Direct: 0,
+          Google: 0,
+          Twitter: 0,
+          LinkedIn: 0
+        }
+      };
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from('links')
+          .insert(row)
+          .select('*')
+          .single();
+
+      if (error) {
+        console.error(error);
+
+        if (error.code === '23505') {
+          showToast(
+            'That alias already exists.'
+          );
+        } else {
+          showToast(
+            'Could not create the short link.'
+          );
+        }
+
+        return;
+      }
+
+      const newLink = {
+        id: data.id,
+        userId: data.user_id,
+        alias: data.alias,
+        originalUrl: data.original_url,
+        shortUrl: createShortUrl(data.alias),
+        createdAt: data.created_at,
+        expiration: data.expiration,
+        password: data.password,
+        clicks: data.clicks,
+        isFavorite: data.is_favorite,
+        referrers: data.referrers
+      };
+
+      links.unshift(newLink);
+
+      renderResult(newLink);
+      renderDashboard();
+      renderCharts();
+
+      shortenForm.reset();
+
+      showToast(
+        'URL shortened successfully!'
+      );
+    });
   }
 
   // =========================================================
-  // RENDER RESULT
+  // RESULT
   // =========================================================
 
   function renderResult(link) {
@@ -1125,38 +778,34 @@ document.addEventListener('DOMContentLoaded', () => {
         link.originalUrl;
     }
 
+    if (resultTime) {
+      resultTime.textContent =
+        'Just now';
+    }
+
     if (openResultLink) {
       openResultLink.href =
         link.shortUrl;
     }
 
     if (qrcodeContainer) {
-      qrcodeContainer.innerHTML =
-        '';
+      qrcodeContainer.innerHTML = '';
 
-      if (
-        typeof QRCode !==
-        'undefined'
-      ) {
-        new QRCode(
-          qrcodeContainer,
-          {
-            text: link.shortUrl,
-            width: 100,
-            height: 100,
-            colorDark: '#111827',
-            colorLight: '#ffffff',
-            correctLevel:
-              QRCode.CorrectLevel.H
-          }
-        );
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrcodeContainer, {
+          text: link.shortUrl,
+          width: 100,
+          height: 100,
+          colorDark: '#111827',
+          colorLight: '#ffffff',
+          correctLevel:
+            QRCode.CorrectLevel.H
+        });
       }
     }
 
     if (resultCard) {
-      resultCard.classList.remove(
-        'hidden'
-      );
+      resultCard.classList.remove('hidden');
 
       resultCard.scrollIntoView({
         behavior: 'smooth'
@@ -1165,254 +814,331 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================
-  // CLIPBOARD
+  // COPY
   // =========================================================
 
-  async function copyToClipboard(
-    text
-  ) {
-    try {
-      if (
-        navigator.clipboard &&
-        window.isSecureContext
-      ) {
-        await navigator.clipboard.writeText(
-          text
-        );
+  copyResultBtn?.addEventListener('click', async () => {
+    if (!resultShortUrl) return;
 
-        return true;
-      }
-
-      const textarea =
-        document.createElement(
-          'textarea'
-        );
-
-      textarea.value = text;
-      textarea.style.position =
-        'fixed';
-
-      textarea.style.left = '-9999px';
-
-      document.body.appendChild(
-        textarea
+    const success =
+      await copyToClipboard(
+        resultShortUrl.value
       );
 
-      textarea.select();
+    if (success) {
+      copyResultBtn.textContent = 'Copied!';
 
-      const result =
-        document.execCommand(
-          'copy'
-        );
+      setTimeout(() => {
+        copyResultBtn.textContent = 'Copy';
+      }, 2000);
 
-      textarea.remove();
+      showToast('Copied to clipboard.');
+    } else {
+      showToast('Could not copy the link.');
+    }
+  });
 
-      return result;
-    } catch (_) {
-      return false;
+  window.copyLink = async url => {
+    const success =
+      await copyToClipboard(url);
+
+    showToast(
+      success
+        ? 'Link copied to clipboard.'
+        : 'Could not copy the link.'
+    );
+  };
+
+  // =========================================================
+  // QR DOWNLOAD
+  // =========================================================
+
+  downloadQrBtn?.addEventListener('click', () => {
+    const img =
+      qrcodeContainer?.querySelector('img');
+
+    if (!img?.src) {
+      showToast('QR code is not ready.');
+      return;
+    }
+
+    const a =
+      document.createElement('a');
+
+    a.href = img.src;
+    a.download = 'linklite-qr.png';
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  // =========================================================
+  // PUBLIC REDIRECT LOOKUP
+  // =========================================================
+
+  async function getPublicLink(alias) {
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.rpc(
+        'get_link_by_alias',
+        {
+          requested_alias: alias
+        }
+      );
+
+    if (error) {
+      console.error(
+        'Public link lookup error:',
+        error
+      );
+
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    const row = data[0];
+
+    return {
+      id: row.id,
+      alias: row.alias,
+      originalUrl: row.original_url,
+      expiration: row.expiration,
+      password: row.password,
+      clicks: Number(row.clicks || 0),
+      referrers: row.referrers || {}
+    };
+  }
+
+  // =========================================================
+  // RECORD PUBLIC CLICK
+  // =========================================================
+
+  async function recordPublicClick(id) {
+    const { error } =
+      await supabaseClient.rpc(
+        'record_link_click',
+        {
+          link_id: id
+        }
+      );
+
+    if (error) {
+      console.error(
+        'Click tracking error:',
+        error
+      );
     }
   }
 
-  if (copyResultBtn) {
-    copyResultBtn.addEventListener(
-      'click',
-      async () => {
-        if (!resultShortUrl) {
-          return;
-        }
+  // =========================================================
+  // REDIRECT
+  // =========================================================
 
-        const success =
-          await copyToClipboard(
-            resultShortUrl.value
-          );
+  async function handleHashRouting() {
+    if (redirectInProgress) {
+      return;
+    }
 
-        if (success) {
-          copyResultBtn.textContent =
-            'Copied!';
+    const hash =
+      window.location.hash;
 
-          setTimeout(() => {
-            copyResultBtn.textContent =
-              'Copy';
-          }, 2000);
+    if (!hash || hash.length <= 1) {
+      return;
+    }
 
-          showToast(
-            'Copied to clipboard'
-          );
-        } else {
-          showToast(
-            'Could not copy the link.'
-          );
-        }
+    const alias =
+      normalizeAlias(
+        hash.substring(1)
+      );
+
+    if (
+      !alias ||
+      ['hero', 'dashboard', 'analytics']
+        .includes(alias)
+    ) {
+      return;
+    }
+
+    let link =
+      await getPublicLink(alias);
+
+    if (!link) {
+      showToast('Short link not found.');
+      return;
+    }
+
+    if (isExpired(link.expiration)) {
+      showToast('This link has expired.');
+      return;
+    }
+
+    if (
+      !link.originalUrl ||
+      !isValidUrl(link.originalUrl)
+    ) {
+      showToast('Invalid destination URL.');
+      return;
+    }
+
+    if (link.password) {
+      pendingRedirectLink = link;
+
+      passwordModal?.classList.remove('hidden');
+      passwordError?.classList.add('hidden');
+
+      if (linkPasswordInput) {
+        linkPasswordInput.value = '';
+        linkPasswordInput.focus();
       }
-    );
+
+      return;
+    }
+
+    await executeRedirect(link);
+  }
+
+  async function executeRedirect(link) {
+    if (redirectInProgress) {
+      return;
+    }
+
+    redirectInProgress = true;
+
+    await recordPublicClick(link.id);
+
+    setTimeout(() => {
+      window.location.replace(
+        link.originalUrl
+      );
+    }, REDIRECT_DELAY);
   }
 
   // =========================================================
-  // GLOBAL COPY FUNCTION
+  // PASSWORD-PROTECTED REDIRECT
   // =========================================================
 
-  window.copyLink =
-    async url => {
-      const success =
-        await copyToClipboard(
-          url
-        );
+  if (passwordForm) {
+    passwordForm.addEventListener(
+      'submit',
+      async e => {
+        e.preventDefault();
 
-      if (success) {
-        showToast(
-          'Link copied to clipboard'
-        );
-      } else {
-        showToast(
-          'Could not copy the link.'
-        );
-      }
-    };
-
-  // =========================================================
-  // DOWNLOAD QR CODE
-  // =========================================================
-
-  if (downloadQrBtn) {
-    downloadQrBtn.addEventListener(
-      'click',
-      () => {
-        if (!qrcodeContainer) {
+        if (!pendingRedirectLink) {
           return;
         }
 
-        const img =
-          qrcodeContainer.querySelector(
-            'img'
-          );
+        const enteredPassword =
+          linkPasswordInput?.value || '';
 
         if (
-          img &&
-          img.src
+          enteredPassword !==
+          pendingRedirectLink.password
         ) {
-          const a =
-            document.createElement(
-              'a'
-            );
-
-          a.href = img.src;
-          a.download =
-            'linklite-qr.png';
-
-          document.body.appendChild(
-            a
+          passwordError?.classList.remove(
+            'hidden'
           );
 
-          a.click();
-
-          document.body.removeChild(
-            a
-          );
-        } else {
-          showToast(
-            'QR code is not available.'
-          );
+          return;
         }
+
+        passwordError?.classList.add(
+          'hidden'
+        );
+
+        passwordModal?.classList.add(
+          'hidden'
+        );
+
+        await executeRedirect(
+          pendingRedirectLink
+        );
       }
     );
   }
 
   // =========================================================
-  // DASHBOARD RENDERER
+  // DASHBOARD
   // =========================================================
 
   function renderDashboard() {
-    const activeUserLinks =
-      getUserLinks();
-
     const totalLinks =
-      activeUserLinks.length;
+      links.length;
 
     const totalClicks =
-      activeUserLinks.reduce(
+      links.reduce(
         (sum, link) =>
-          sum +
-          Number(
-            link.clicks || 0
-          ),
+          sum + Number(link.clicks || 0),
         0
       );
 
-    const todayStr =
+    const today =
       new Date()
         .toISOString()
         .split('T')[0];
 
     const todayClicks =
-      activeUserLinks
+      links
         .filter(
           link =>
-            link.createdAt &&
-            link.createdAt.startsWith(
-              todayStr
-            )
+            link.createdAt?.startsWith(today)
         )
         .reduce(
           (sum, link) =>
-            sum +
-            Number(
-              link.clicks || 0
-            ),
+            sum + Number(link.clicks || 0),
           0
         );
 
     const activeLinks =
-      activeUserLinks.filter(
+      links.filter(
         link =>
-          !isExpired(
-            link.expiration
-          )
+          !isExpired(link.expiration)
       ).length;
 
-    const metricTotalLinks =
-      document.getElementById(
-        'metricTotalLinks'
-      );
+    document.getElementById(
+      'metricTotalLinks'
+    )?.replaceChildren(
+      document.createTextNode(
+        String(totalLinks)
+      )
+    );
 
-    const metricTotalClicks =
-      document.getElementById(
-        'metricTotalClicks'
-      );
+    document.getElementById(
+      'metricTotalClicks'
+    )?.replaceChildren(
+      document.createTextNode(
+        String(totalClicks)
+      )
+    );
 
-    const metricTodayClicks =
-      document.getElementById(
-        'metricTodayClicks'
-      );
+    document.getElementById(
+      'metricTodayClicks'
+    )?.replaceChildren(
+      document.createTextNode(
+        String(todayClicks)
+      )
+    );
 
-    const metricActiveLinks =
-      document.getElementById(
-        'metricActiveLinks'
-      );
+    document.getElementById(
+      'metricActiveLinks'
+    )?.replaceChildren(
+      document.createTextNode(
+        String(activeLinks)
+      )
+    );
 
-    if (metricTotalLinks) {
-      metricTotalLinks.textContent =
-        totalLinks;
-    }
-
-    if (metricTotalClicks) {
-      metricTotalClicks.textContent =
-        totalClicks;
-    }
-
-    if (metricTodayClicks) {
-      metricTodayClicks.textContent =
-        todayClicks;
-    }
-
-    if (metricActiveLinks) {
-      metricActiveLinks.textContent =
-        activeLinks;
+    if (!linksTableBody) {
+      return;
     }
 
     let filtered =
-      [...activeUserLinks];
+      [...links];
 
-    // Search
     const query =
       searchInput
         ? searchInput.value
@@ -1424,28 +1150,24 @@ document.addEventListener('DOMContentLoaded', () => {
       filtered =
         filtered.filter(
           link =>
-            link.originalUrl
+            link.alias
               .toLowerCase()
               .includes(query) ||
-            link.alias
+            link.originalUrl
               .toLowerCase()
               .includes(query)
         );
     }
 
-    // Status
     const status =
-      statusFilter
-        ? statusFilter.value
-        : 'all';
+      statusFilter?.value ||
+      'all';
 
     if (status === 'active') {
       filtered =
         filtered.filter(
           link =>
-            !isExpired(
-              link.expiration
-            )
+            !isExpired(link.expiration)
         );
     }
 
@@ -1453,9 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
       filtered =
         filtered.filter(
           link =>
-            isExpired(
-              link.expiration
-            )
+            isExpired(link.expiration)
         );
     }
 
@@ -1467,453 +1187,333 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // Sort
     const sort =
-      sortSelect
-        ? sortSelect.value
-        : 'newest';
+      sortSelect?.value ||
+      'newest';
 
     if (sort === 'newest') {
       filtered.sort(
         (a, b) =>
-          new Date(
-            b.createdAt
-          ) -
-          new Date(
-            a.createdAt
-          )
+          new Date(b.createdAt) -
+          new Date(a.createdAt)
       );
     }
 
     if (sort === 'oldest') {
       filtered.sort(
         (a, b) =>
-          new Date(
-            a.createdAt
-          ) -
-          new Date(
-            b.createdAt
-          )
+          new Date(a.createdAt) -
+          new Date(b.createdAt)
       );
     }
 
     if (sort === 'clicks') {
       filtered.sort(
         (a, b) =>
-          Number(
-            b.clicks || 0
-          ) -
-          Number(
-            a.clicks || 0
-          )
+          Number(b.clicks || 0) -
+          Number(a.clicks || 0)
       );
     }
 
-    if (!linksTableBody) {
-      return;
-    }
-
-    linksTableBody.innerHTML =
-      '';
+    linksTableBody.innerHTML = '';
 
     if (filtered.length === 0) {
-      if (emptyState) {
-        emptyState.classList.remove(
-          'hidden'
-        );
-      }
-
+      emptyState?.classList.remove(
+        'hidden'
+      );
       return;
     }
 
-    if (emptyState) {
-      emptyState.classList.add(
-        'hidden'
-      );
-    }
-
-    filtered.forEach(
-      link => {
-        const tr =
-          document.createElement(
-            'tr'
-          );
-
-        const expired =
-          isExpired(
-            link.expiration
-          );
-
-        tr.innerHTML = `
-          <td>
-            <a
-              href="${link.shortUrl}"
-              target="_blank"
-              rel="noopener noreferrer"
-              style="font-weight: 600;"
-            >
-              /${escapeHtml(link.alias)}
-            </a>
-
-            ${
-              link.password
-                ? ' 🔒'
-                : ''
-            }
-          </td>
-
-          <td
-            style="
-              max-width: 250px;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            "
-          >
-            ${escapeHtml(
-              link.originalUrl
-            )}
-          </td>
-
-          <td>
-            ${Number(
-              link.clicks || 0
-            )}
-          </td>
-
-          <td>
-            <span
-              class="badge ${
-                expired
-                  ? 'badge-danger'
-                  : 'badge-success'
-              }"
-            >
-              ${
-                expired
-                  ? 'Expired'
-                  : 'Active'
-              }
-            </span>
-          </td>
-
-          <td>
-            ${
-              new Date(
-                link.createdAt
-              ).toLocaleDateString()
-            }
-          </td>
-
-          <td class="text-right">
-
-            <button
-              class="btn btn-secondary btn-sm"
-              onclick="toggleFavorite('${link.id}')"
-            >
-              ${
-                link.isFavorite
-                  ? '★'
-                  : '☆'
-              }
-            </button>
-
-            <button
-              class="btn btn-secondary btn-sm"
-              onclick="copyLink('${link.shortUrl}')"
-            >
-              Copy
-            </button>
-
-            <button
-              class="btn btn-secondary btn-sm"
-              onclick="deleteLink('${link.id}')"
-            >
-              Delete
-            </button>
-
-          </td>
-        `;
-
-        linksTableBody.appendChild(
-          tr
-        );
-      }
+    emptyState?.classList.add(
+      'hidden'
     );
+
+    filtered.forEach(link => {
+      const tr =
+        document.createElement('tr');
+
+      const expired =
+        isExpired(link.expiration);
+
+      tr.innerHTML = `
+        <td>
+          <a
+            href="${escapeHtml(link.shortUrl)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="font-weight: 600;"
+          >
+            /${escapeHtml(link.alias)}
+          </a>
+          ${link.password ? ' 🔒' : ''}
+        </td>
+
+        <td
+          style="
+            max-width:250px;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+          "
+          title="${escapeHtml(link.originalUrl)}"
+        >
+          ${escapeHtml(link.originalUrl)}
+        </td>
+
+        <td>
+          ${Number(link.clicks || 0)}
+        </td>
+
+        <td>
+          <span
+            class="badge ${
+              expired
+                ? 'badge-danger'
+                : 'badge-success'
+            }"
+          >
+            ${expired ? 'Expired' : 'Active'}
+          </span>
+        </td>
+
+        <td>
+          ${new Date(
+            link.createdAt
+          ).toLocaleDateString()}
+        </td>
+
+        <td class="text-right">
+
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="toggleFavorite('${link.id}')"
+          >
+            ${link.isFavorite ? '★' : '☆'}
+          </button>
+
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="copyLink('${escapeHtml(link.shortUrl)}')"
+          >
+            Copy
+          </button>
+
+          <button
+            class="btn btn-secondary btn-sm"
+            onclick="deleteLink('${link.id}')"
+          >
+            Delete
+          </button>
+
+        </td>
+      `;
+
+      linksTableBody.appendChild(tr);
+    });
   }
 
   // =========================================================
-  // REGISTER CLICK
+  // DELETE
   // =========================================================
 
-  window.registerClick =
-    id => {
-      const link =
-        links.find(
-          item =>
-            item.id === id
-        );
+  window.deleteLink = async id => {
+    const { error } =
+      await supabaseClient
+        .from('links')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
 
-      if (!link) {
-        return;
-      }
+    if (error) {
+      console.error(error);
+      showToast('Could not delete link.');
+      return;
+    }
 
-      link.clicks =
-        Number(
-          link.clicks || 0
-        ) + 1;
-
-      if (!link.referrers) {
-        link.referrers = {
-          Direct: 0,
-          Google: 0,
-          Twitter: 0,
-          LinkedIn: 0
-        };
-      }
-
-      link.referrers.Direct =
-        Number(
-          link.referrers.Direct || 0
-        ) + 1;
-
-      saveLinks();
-
-      renderDashboard();
-      renderCharts();
-    };
-
-  // =========================================================
-  // DELETE LINK
-  // =========================================================
-
-  window.deleteLink =
-    id => {
-      const exists =
-        links.some(
-          link =>
-            link.id === id
-        );
-
-      if (!exists) {
-        return;
-      }
-
-      links =
-        links.filter(
-          link =>
-            link.id !== id
-        );
-
-      saveLinks();
-
-      renderDashboard();
-      renderCharts();
-
-      showToast(
-        'Link deleted'
+    links =
+      links.filter(
+        link => link.id !== id
       );
-    };
+
+    renderDashboard();
+    renderCharts();
+
+    showToast('Link deleted.');
+  };
 
   // =========================================================
   // FAVORITE
   // =========================================================
 
-  window.toggleFavorite =
-    id => {
-      const link =
-        links.find(
-          item =>
-            item.id === id
+  window.toggleFavorite = async id => {
+    const link =
+      links.find(
+        item => item.id === id
+      );
+
+    if (!link) return;
+
+    const nextValue =
+      !link.isFavorite;
+
+    const { error } =
+      await supabaseClient
+        .from('links')
+        .update({
+          is_favorite:
+            nextValue
+        })
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+
+    if (error) {
+      console.error(error);
+      showToast('Could not update favorite.');
+      return;
+    }
+
+    link.isFavorite =
+      nextValue;
+
+    renderDashboard();
+  };
+
+  // =========================================================
+  // SEARCH / FILTERS
+  // =========================================================
+
+  searchInput?.addEventListener(
+    'input',
+    renderDashboard
+  );
+
+  statusFilter?.addEventListener(
+    'change',
+    renderDashboard
+  );
+
+  sortSelect?.addEventListener(
+    'change',
+    renderDashboard
+  );
+
+  // =========================================================
+  // DRAG / DROP
+  // =========================================================
+
+  dropZone?.addEventListener(
+    'dragover',
+    e => {
+      e.preventDefault();
+
+      dropZone.classList.add(
+        'dragover'
+      );
+    }
+  );
+
+  dropZone?.addEventListener(
+    'dragleave',
+    () => {
+      dropZone.classList.remove(
+        'dragover'
+      );
+    }
+  );
+
+  dropZone?.addEventListener(
+    'drop',
+    e => {
+      e.preventDefault();
+
+      dropZone.classList.remove(
+        'dragover'
+      );
+
+      const value =
+        e.dataTransfer.getData(
+          'text'
         );
 
-      if (!link) {
+      if (
+        value &&
+        longUrlInput &&
+        isValidUrl(value)
+      ) {
+        longUrlInput.value =
+          value.trim();
+      }
+    }
+  );
+
+  // =========================================================
+  // CSV
+  // =========================================================
+
+  exportCsvBtn?.addEventListener(
+    'click',
+    () => {
+      if (links.length === 0) {
+        showToast(
+          'No links to export.'
+        );
         return;
       }
 
-      link.isFavorite =
-        !link.isFavorite;
+      const header =
+        'Alias,Short URL,Original URL,Clicks,Created At\n';
 
-      saveLinks();
-
-      renderDashboard();
-    };
-
-  // =========================================================
-  // FILTERING
-  // =========================================================
-
-  if (searchInput) {
-    searchInput.addEventListener(
-      'input',
-      renderDashboard
-    );
-  }
-
-  if (statusFilter) {
-    statusFilter.addEventListener(
-      'change',
-      renderDashboard
-    );
-  }
-
-  if (sortSelect) {
-    sortSelect.addEventListener(
-      'change',
-      renderDashboard
-    );
-  }
-
-  // =========================================================
-  // DRAG AND DROP
-  // =========================================================
-
-  if (dropZone) {
-    dropZone.addEventListener(
-      'dragover',
-      e => {
-        e.preventDefault();
-
-        dropZone.classList.add(
-          'dragover'
-        );
-      }
-    );
-
-    dropZone.addEventListener(
-      'dragleave',
-      () => {
-        dropZone.classList.remove(
-          'dragover'
-        );
-      }
-    );
-
-    dropZone.addEventListener(
-      'drop',
-      e => {
-        e.preventDefault();
-
-        dropZone.classList.remove(
-          'dragover'
+      const rows =
+        links.map(
+          link =>
+            `"${escapeCsv(link.alias)}","${escapeCsv(
+              link.shortUrl
+            )}","${escapeCsv(
+              link.originalUrl
+            )}",${Number(
+              link.clicks || 0
+            )},"${escapeCsv(
+              link.createdAt
+            )}"`
         );
 
-        const droppedText =
-          e.dataTransfer.getData(
-            'text'
-          );
+      const blob =
+        new Blob(
+          [header + rows.join('\n')],
+          {
+            type:
+              'text/csv;charset=utf-8'
+          }
+        );
 
-        if (
-          droppedText &&
-          isValidUrl(
-            droppedText
-          ) &&
-          longUrlInput
-        ) {
-          longUrlInput.value =
-            droppedText.trim();
-        }
-      }
-    );
-  }
+      const url =
+        URL.createObjectURL(blob);
+
+      const a =
+        document.createElement('a');
+
+      a.href = url;
+      a.download =
+        'linklite-export.csv';
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+
+      showToast(
+        'CSV exported.'
+      );
+    }
+  );
 
   // =========================================================
-  // EXPORT CSV
-  // =========================================================
-
-  if (exportCsvBtn) {
-    exportCsvBtn.addEventListener(
-      'click',
-      () => {
-        const activeUserLinks =
-          getUserLinks();
-
-        if (
-          activeUserLinks.length ===
-          0
-        ) {
-          showToast(
-            'No data available to export.'
-          );
-
-          return;
-        }
-
-        const headers =
-          'Alias,Short URL,Original URL,Clicks,Created At\n';
-
-        const rows =
-          activeUserLinks.map(
-            link =>
-              `"${escapeCsv(
-                link.alias
-              )}","${escapeCsv(
-                link.shortUrl
-              )}","${escapeCsv(
-                link.originalUrl
-              )}",${Number(
-                link.clicks || 0
-              )},"${escapeCsv(
-                link.createdAt
-              )}"`
-          );
-
-        const blob =
-          new Blob(
-            [
-              headers +
-              rows.join('\n')
-            ],
-            {
-              type:
-                'text/csv;charset=utf-8;'
-            }
-          );
-
-        const url =
-          window.URL.createObjectURL(
-            blob
-          );
-
-        const a =
-          document.createElement(
-            'a'
-          );
-
-        a.href = url;
-        a.download =
-          'linklite-export.csv';
-
-        document.body.appendChild(
-          a
-        );
-
-        a.click();
-
-        document.body.removeChild(
-          a
-        );
-
-        window.URL.revokeObjectURL(
-          url
-        );
-
-        showToast(
-          'Exported links as CSV'
-        );
-      }
-    );
-  }
-
-  // =========================================================
-  // ANALYTICS CHARTS
+  // CHARTS
   // =========================================================
 
   function renderCharts() {
-    if (
-      typeof Chart ===
-      'undefined'
-    ) {
+    if (typeof Chart === 'undefined') {
       return;
     }
 
@@ -1932,8 +1532,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '#1F2937'
         : '#E5E7EB';
 
-    const activeUserLinks =
-      getUserLinks();
+    const totalClicks =
+      links.reduce(
+        (sum, link) =>
+          sum + Number(link.clicks || 0),
+        0
+      );
 
     const referrerTotals = {
       Direct: 0,
@@ -1942,27 +1546,17 @@ document.addEventListener('DOMContentLoaded', () => {
       LinkedIn: 0
     };
 
-    activeUserLinks.forEach(
-      link => {
-        if (!link.referrers) {
-          return;
-        }
+    links.forEach(link => {
+      const refs =
+        link.referrers || {};
 
-        Object.keys(
-          referrerTotals
-        ).forEach(key => {
-          referrerTotals[key] +=
-            Number(
-              link.referrers[key] ||
-              0
-            );
-        });
-      }
-    );
-
-    // ---------------------------------------------------------
-    // CLICKS CHART
-    // ---------------------------------------------------------
+      Object.keys(
+        referrerTotals
+      ).forEach(key => {
+        referrerTotals[key] +=
+          Number(refs[key] || 0);
+      });
+    });
 
     const clicksElem =
       document.getElementById(
@@ -1970,43 +1564,29 @@ document.addEventListener('DOMContentLoaded', () => {
       );
 
     if (clicksElem) {
-      const clicksCtx =
-        clicksElem.getContext(
-          '2d'
-        );
-
       if (clicksChartInstance) {
         clicksChartInstance.destroy();
       }
 
-      const totalClicks =
-        activeUserLinks.reduce(
-          (sum, link) =>
-            sum +
-            Number(
-              link.clicks || 0
-            ),
-          0
-        );
-
       clicksChartInstance =
         new Chart(
-          clicksCtx,
+          clicksElem.getContext('2d'),
           {
             type: 'line',
 
             data: {
               labels: [
-                'Total Stored Links',
+                'Total Links',
                 'Total Clicks'
               ],
 
               datasets: [
                 {
-                  label: 'Count',
+                  label:
+                    'Count',
 
                   data: [
-                    activeUserLinks.length,
+                    links.length,
                     totalClicks
                   ],
 
@@ -2045,6 +1625,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
 
                 y: {
+                  beginAtZero: true,
+
                   ticks: {
                     color:
                       textColor
@@ -2053,10 +1635,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   grid: {
                     color:
                       gridColor
-                  },
-
-                  beginAtZero:
-                    true
+                  }
                 }
               }
             }
@@ -2064,28 +1643,19 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // ---------------------------------------------------------
-    // REFERRER CHART
-    // ---------------------------------------------------------
-
     const refElem =
       document.getElementById(
         'referrerChart'
       );
 
     if (refElem) {
-      const refCtx =
-        refElem.getContext(
-          '2d'
-        );
-
       if (referrerChartInstance) {
         referrerChartInstance.destroy();
       }
 
       referrerChartInstance =
         new Chart(
-          refCtx,
+          refElem.getContext('2d'),
           {
             type: 'doughnut',
 
@@ -2117,8 +1687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
               plugins: {
                 legend: {
-                  position:
-                    'bottom',
+                  position: 'bottom',
 
                   labels: {
                     color:
@@ -2133,17 +1702,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================
-  // INITIAL EXECUTION
+  // INITIALIZATION
   // =========================================================
 
   initTheme();
-  updateAuthUI();
-  renderDashboard();
-  renderCharts();
 
-  // IMPORTANT:
-  // This MUST stay at the bottom.
-  // All functions including registerClick()
-  // must exist before routing starts.
-  handleHashRouting();
+  const {
+    data: sessionData
+  } =
+    await supabaseClient.auth.getSession();
+
+  currentUser =
+    sessionData.session?.user || null;
+
+  await loadProfile();
+  await loadUserLinks();
+
+  // Important:
+  // Public hash routing does not require login.
+  await handleHashRouting();
+
 });
