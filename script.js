@@ -4,25 +4,38 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+
   // =========================================================
   // SUPABASE CONFIG
   // =========================================================
 
   const SUPABASE_URL =
-    'YOUR_SUPABASE_PROJECT_URL';
+    'https://zxafvybohlwqyequywte.supabase.co';
 
   const SUPABASE_PUBLISHABLE_KEY =
     'sb_publishable_-zBbU-ZisQCJaNIzI2NgSw_8MUwv67_';
 
+  // =========================================================
+  // SUPABASE INITIALIZATION
+  // =========================================================
+
   if (!window.supabase) {
-    console.error('Supabase JS failed to load.');
+    console.error(
+      'LinkLite: Supabase JS failed to load.'
+    );
+
+    showToast(
+      'Supabase failed to load.'
+    );
+
     return;
   }
 
-  const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
-  );
+  const supabaseClient =
+    window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
 
   // =========================================================
   // STATE
@@ -31,147 +44,335 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentUser = null;
   let profile = null;
   let links = [];
+
   let pendingRedirectLink = null;
   let redirectInProgress = false;
 
   let clicksChartInstance = null;
   let referrerChartInstance = null;
 
+  // Redirect delay: 2 seconds
   const REDIRECT_DELAY = 2000;
 
   // =========================================================
-  // DOM
+  // DOM ELEMENTS
   // =========================================================
 
-  const passwordModal = document.getElementById('passwordModal');
-  const passwordForm = document.getElementById('passwordForm');
-  const linkPasswordInput = document.getElementById('linkPasswordInput');
-  const passwordError = document.getElementById('passwordError');
+  const passwordModal =
+    document.getElementById(
+      'passwordModal'
+    );
 
-  const shortenForm = document.getElementById('shortenForm');
-  const longUrlInput = document.getElementById('longUrlInput');
-  const customAliasInput = document.getElementById('customAlias');
-  const expirationDateInput = document.getElementById('expirationDate');
-  const passwordProtectInput = document.getElementById('passwordProtect');
+  const passwordForm =
+    document.getElementById(
+      'passwordForm'
+    );
 
-  const resultCard = document.getElementById('resultCard');
-  const resultShortUrl = document.getElementById('resultShortUrl');
-  const resultOriginalUrl = document.getElementById('resultOriginalUrl');
-  const resultTime = document.getElementById('resultTime');
-  const copyResultBtn = document.getElementById('copyResultBtn');
-  const openResultLink = document.getElementById('openResultLink');
-  const qrcodeContainer = document.getElementById('qrcode');
-  const downloadQrBtn = document.getElementById('downloadQrBtn');
+  const linkPasswordInput =
+    document.getElementById(
+      'linkPasswordInput'
+    );
 
-  const linksTableBody = document.getElementById('linksTableBody');
-  const emptyState = document.getElementById('emptyState');
+  const passwordError =
+    document.getElementById(
+      'passwordError'
+    );
 
-  const searchInput = document.getElementById('searchInput');
-  const statusFilter = document.getElementById('statusFilter');
-  const sortSelect = document.getElementById('sortSelect');
-  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const shortenForm =
+    document.getElementById(
+      'shortenForm'
+    );
 
-  const themeToggleBtn = document.getElementById('themeToggleBtn');
-  const dropZone = document.getElementById('dropZone');
+  const longUrlInput =
+    document.getElementById(
+      'longUrlInput'
+    );
 
-  const openAuthBtn = document.getElementById('openAuthBtn');
-  const authModal = document.getElementById('authModal');
-  const closeAuthModal = document.getElementById('closeAuthModal');
+  const customAliasInput =
+    document.getElementById(
+      'customAlias'
+    );
 
-  const tabLoginBtn = document.getElementById('tabLoginBtn');
-  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+  const expirationDateInput =
+    document.getElementById(
+      'expirationDate'
+    );
 
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
+  const passwordProtectInput =
+    document.getElementById(
+      'passwordProtect'
+    );
 
-  const loggedOutNav = document.getElementById('loggedOutNav');
-  const loggedInNav = document.getElementById('loggedInNav');
-  const userGreeting = document.getElementById('userGreeting');
-  const logoutBtn = document.getElementById('logoutBtn');
+  const resultCard =
+    document.getElementById(
+      'resultCard'
+    );
+
+  const resultShortUrl =
+    document.getElementById(
+      'resultShortUrl'
+    );
+
+  const resultOriginalUrl =
+    document.getElementById(
+      'resultOriginalUrl'
+    );
+
+  const resultTime =
+    document.getElementById(
+      'resultTime'
+    );
+
+  const copyResultBtn =
+    document.getElementById(
+      'copyResultBtn'
+    );
+
+  const openResultLink =
+    document.getElementById(
+      'openResultLink'
+    );
+
+  const qrcodeContainer =
+    document.getElementById(
+      'qrcode'
+    );
+
+  const downloadQrBtn =
+    document.getElementById(
+      'downloadQrBtn'
+    );
+
+  const linksTableBody =
+    document.getElementById(
+      'linksTableBody'
+    );
+
+  const emptyState =
+    document.getElementById(
+      'emptyState'
+    );
+
+  const searchInput =
+    document.getElementById(
+      'searchInput'
+    );
+
+  const statusFilter =
+    document.getElementById(
+      'statusFilter'
+    );
+
+  const sortSelect =
+    document.getElementById(
+      'sortSelect'
+    );
+
+  const exportCsvBtn =
+    document.getElementById(
+      'exportCsvBtn'
+    );
+
+  const themeToggleBtn =
+    document.getElementById(
+      'themeToggleBtn'
+    );
+
+  const dropZone =
+    document.getElementById(
+      'dropZone'
+    );
+
+  const openAuthBtn =
+    document.getElementById(
+      'openAuthBtn'
+    );
+
+  const authModal =
+    document.getElementById(
+      'authModal'
+    );
+
+  const closeAuthModal =
+    document.getElementById(
+      'closeAuthModal'
+    );
+
+  const tabLoginBtn =
+    document.getElementById(
+      'tabLoginBtn'
+    );
+
+  const tabRegisterBtn =
+    document.getElementById(
+      'tabRegisterBtn'
+    );
+
+  const loginForm =
+    document.getElementById(
+      'loginForm'
+    );
+
+  const registerForm =
+    document.getElementById(
+      'registerForm'
+    );
+
+  const loggedOutNav =
+    document.getElementById(
+      'loggedOutNav'
+    );
+
+  const loggedInNav =
+    document.getElementById(
+      'loggedInNav'
+    );
+
+  const userGreeting =
+    document.getElementById(
+      'userGreeting'
+    );
+
+  const logoutBtn =
+    document.getElementById(
+      'logoutBtn'
+    );
 
   // =========================================================
-  // HELPERS
+  // TOAST
   // =========================================================
 
   function showToast(message) {
-    const container = document.getElementById('toastContainer');
+    const container =
+      document.getElementById(
+        'toastContainer'
+      );
 
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
-    const toast = document.createElement('div');
+    const toast =
+      document.createElement(
+        'div'
+      );
 
-    toast.className = 'toast';
-    toast.textContent = message;
+    toast.className =
+      'toast';
 
-    container.appendChild(toast);
+    toast.textContent =
+      message;
+
+    container.appendChild(
+      toast
+    );
 
     setTimeout(() => {
       toast.remove();
     }, 3000);
   }
 
+  // =========================================================
+  // HTML ESCAPE
+  // =========================================================
+
   function escapeHtml(value) {
     return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(
+        /&/g,
+        '&amp;'
+      )
+      .replace(
+        /</g,
+        '&lt;'
+      )
+      .replace(
+        />/g,
+        '&gt;'
+      )
+      .replace(
+        /"/g,
+        '&quot;'
+      )
+      .replace(
+        /'/g,
+        '&#039;'
+      );
   }
 
   function escapeCsv(value) {
-    return String(value ?? '').replace(/"/g, '""');
+    return String(value ?? '')
+      .replace(
+        /"/g,
+        '""'
+      );
   }
+
+  // =========================================================
+  // URL VALIDATION
+  // =========================================================
 
   function isValidUrl(value) {
     try {
-      const url = new URL(value);
+      const url =
+        new URL(value);
 
       return (
-        url.protocol === 'http:' ||
-        url.protocol === 'https:'
+        url.protocol ===
+          'http:' ||
+        url.protocol ===
+          'https:'
       );
     } catch {
       return false;
     }
   }
 
-  function isExpired(expirationDate) {
-    if (!expirationDate) return false;
+  // =========================================================
+  // EXPIRATION
+  // =========================================================
 
-    const date = new Date(expirationDate);
+  function isExpired(
+    expirationDate
+  ) {
+    if (!expirationDate) {
+      return false;
+    }
 
-    if (Number.isNaN(date.getTime())) {
+    const date =
+      new Date(
+        expirationDate
+      );
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
       return false;
     }
 
     return date < new Date();
   }
 
-  function normalizeAlias(alias) {
+  // =========================================================
+  // ALIAS
+  // =========================================================
+
+  function normalizeAlias(
+    alias
+  ) {
     try {
-      return decodeURIComponent(alias).trim();
+      return decodeURIComponent(
+        alias
+      ).trim();
     } catch {
       return alias.trim();
     }
   }
 
-  function getBaseUrl() {
-    let path = window.location.pathname;
-
-    if (!path.endsWith('/')) {
-      path += '/';
-    }
-
-    return `${window.location.origin}${path}`;
-  }
-
-  function createShortUrl(alias) {
-    return `${getBaseUrl()}#${encodeURIComponent(alias)}`;
-  }
-
   function generateAlias() {
-    const chars =
+    const characters =
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
     let alias;
@@ -179,15 +380,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     do {
       alias = '';
 
-      for (let i = 0; i < 6; i++) {
-        alias += chars.charAt(
-          Math.floor(Math.random() * chars.length)
-        );
+      for (
+        let i = 0;
+        i < 6;
+        i++
+      ) {
+        alias +=
+          characters.charAt(
+            Math.floor(
+              Math.random() *
+              characters.length
+            )
+          );
       }
     } while (
       links.some(
         link =>
-          String(link.alias).toLowerCase() ===
+          String(
+            link.alias
+          ).toLowerCase() ===
           alias.toLowerCase()
       )
     );
@@ -195,32 +406,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     return alias;
   }
 
-  async function copyToClipboard(text) {
+  // =========================================================
+  // SHORT URL
+  // =========================================================
+
+  function getBaseUrl() {
+    let pathname =
+      window.location.pathname;
+
+    if (
+      !pathname.endsWith('/')
+    ) {
+      pathname += '/';
+    }
+
+    return (
+      window.location.origin +
+      pathname
+    );
+  }
+
+  function createShortUrl(
+    alias
+  ) {
+    return (
+      getBaseUrl() +
+      '#' +
+      encodeURIComponent(
+        alias
+      )
+    );
+  }
+
+  // =========================================================
+  // CLIPBOARD
+  // =========================================================
+
+  async function copyToClipboard(
+    text
+  ) {
     try {
+
       if (
         navigator.clipboard &&
         window.isSecureContext
       ) {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(
+          text
+        );
+
         return true;
       }
 
-      const textarea = document.createElement('textarea');
+      const textarea =
+        document.createElement(
+          'textarea'
+        );
 
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
+      textarea.value =
+        text;
 
-      document.body.appendChild(textarea);
+      textarea.style.position =
+        'fixed';
+
+      textarea.style.left =
+        '-9999px';
+
+      document.body.appendChild(
+        textarea
+      );
 
       textarea.select();
 
-      const copied =
-        document.execCommand('copy');
+      const success =
+        document.execCommand(
+          'copy'
+        );
 
       textarea.remove();
 
-      return copied;
+      return success;
+
     } catch {
       return false;
     }
@@ -232,7 +498,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function initTheme() {
     const savedTheme =
-      localStorage.getItem('linklite_theme') || 'light';
+      localStorage.getItem(
+        'linklite_theme'
+      ) || 'light';
 
     document.documentElement.setAttribute(
       'data-theme',
@@ -241,27 +509,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (themeToggleBtn) {
-    themeToggleBtn.addEventListener('click', () => {
-      const currentTheme =
-        document.documentElement.getAttribute('data-theme');
+    themeToggleBtn.addEventListener(
+      'click',
+      () => {
 
-      const newTheme =
-        currentTheme === 'dark'
-          ? 'light'
-          : 'dark';
+        const currentTheme =
+          document.documentElement.getAttribute(
+            'data-theme'
+          );
 
-      document.documentElement.setAttribute(
-        'data-theme',
-        newTheme
-      );
+        const newTheme =
+          currentTheme ===
+          'dark'
+            ? 'light'
+            : 'dark';
 
-      localStorage.setItem(
-        'linklite_theme',
-        newTheme
-      );
+        document.documentElement.setAttribute(
+          'data-theme',
+          newTheme
+        );
 
-      renderCharts();
-    });
+        localStorage.setItem(
+          'linklite_theme',
+          newTheme
+        );
+
+        renderCharts();
+      }
+    );
   }
 
   // =========================================================
@@ -269,20 +544,46 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
 
   function updateAuthUI() {
+
     if (currentUser) {
-      loggedOutNav?.classList.add('hidden');
-      loggedInNav?.classList.remove('hidden');
+
+      if (loggedOutNav) {
+        loggedOutNav.classList.add(
+          'hidden'
+        );
+      }
+
+      if (loggedInNav) {
+        loggedInNav.classList.remove(
+          'hidden'
+        );
+      }
 
       if (userGreeting) {
         userGreeting.textContent =
-          `@${profile?.username || currentUser.email}`;
+          `@${
+            profile?.username ||
+            currentUser.email
+          }`;
       }
+
     } else {
-      loggedOutNav?.classList.remove('hidden');
-      loggedInNav?.classList.add('hidden');
+
+      if (loggedOutNav) {
+        loggedOutNav.classList.remove(
+          'hidden'
+        );
+      }
+
+      if (loggedInNav) {
+        loggedInNav.classList.add(
+          'hidden'
+        );
+      }
 
       if (userGreeting) {
-        userGreeting.textContent = '';
+        userGreeting.textContent =
+          '';
       }
     }
   }
@@ -292,21 +593,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
 
   async function loadProfile() {
+
     if (!currentUser) {
       profile = null;
       updateAuthUI();
       return;
     }
 
-    const { data, error } =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from('profiles')
-        .select('id, username')
-        .eq('id', currentUser.id)
+        .select(
+          'id, username'
+        )
+        .eq(
+          'id',
+          currentUser.id
+        )
         .maybeSingle();
 
     if (error) {
-      console.error('Profile load error:', error);
+      console.error(
+        'Profile load error:',
+        error
+      );
+
       profile = null;
     } else {
       profile = data;
@@ -316,67 +630,126 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // =========================================================
-  // LOAD USER LINKS
+  // LOAD LINKS
   // =========================================================
 
   async function loadUserLinks() {
+
     if (!currentUser) {
       links = [];
+
       renderDashboard();
       renderCharts();
+
       return;
     }
 
-    const { data, error } =
+    const {
+      data,
+      error
+    } =
       await supabaseClient
         .from('links')
         .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', {
-          ascending: false
-        });
+        .eq(
+          'user_id',
+          currentUser.id
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
 
     if (error) {
-      console.error('Links load error:', error);
-      showToast('Could not load your links.');
+
+      console.error(
+        'Links load error:',
+        error
+      );
+
+      showToast(
+        'Could not load your links.'
+      );
+
       return;
     }
 
-    links = (data || []).map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      alias: row.alias,
-      originalUrl: row.original_url,
-      shortUrl: createShortUrl(row.alias),
-      createdAt: row.created_at,
-      expiration: row.expiration || null,
-      password: row.password || null,
-      clicks: Number(row.clicks || 0),
-      isFavorite: Boolean(row.is_favorite),
-      referrers: row.referrers || {
-        Direct: 0,
-        Google: 0,
-        Twitter: 0,
-        LinkedIn: 0
-      }
-    }));
+    links =
+      (data || []).map(
+        row => ({
+          id:
+            row.id,
+
+          userId:
+            row.user_id,
+
+          alias:
+            row.alias,
+
+          originalUrl:
+            row.original_url,
+
+          shortUrl:
+            createShortUrl(
+              row.alias
+            ),
+
+          createdAt:
+            row.created_at,
+
+          expiration:
+            row.expiration ||
+            null,
+
+          password:
+            row.password ||
+            null,
+
+          clicks:
+            Number(
+              row.clicks || 0
+            ),
+
+          isFavorite:
+            Boolean(
+              row.is_favorite
+            ),
+
+          referrers:
+            row.referrers ||
+            {
+              Direct: 0,
+              Google: 0,
+              Twitter: 0,
+              LinkedIn: 0
+            }
+        })
+      );
 
     renderDashboard();
     renderCharts();
   }
 
   // =========================================================
-  // AUTH STATE
+  // AUTH STATE LISTENER
   // =========================================================
 
-  const {
-    data: authListener
-  } = supabaseClient.auth.onAuthStateChange(
-    async (_event, session) => {
-      currentUser = session?.user || null;
+  supabaseClient.auth.onAuthStateChange(
+    async (
+      _event,
+      session
+    ) => {
+
+      currentUser =
+        session?.user ||
+        null;
 
       await loadProfile();
+
       await loadUserLinks();
+
       updateAuthUI();
     }
   );
@@ -386,101 +759,160 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
 
   if (registerForm) {
-    registerForm.addEventListener('submit', async e => {
-      e.preventDefault();
 
-      const username =
-        document.getElementById('regUsername')?.value
-          .trim()
-          .toLowerCase();
+    registerForm.addEventListener(
+      'submit',
+      async e => {
 
-      const email =
-        document.getElementById('regEmail')?.value
-          .trim()
-          .toLowerCase();
+        e.preventDefault();
 
-      const password =
-        document.getElementById('regPassword')?.value;
+        const username =
+          document.getElementById(
+            'regUsername'
+          )?.value
+            .trim()
+            .toLowerCase();
 
-      if (!username || !email || !password) {
-        showToast('Please fill in all fields.');
-        return;
-      }
+        const email =
+          document.getElementById(
+            'regEmail'
+          )?.value
+            .trim()
+            .toLowerCase();
 
-      if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-        showToast(
-          'Username must be 3-20 characters and use only letters, numbers, and _.'
-        );
-        return;
-      }
+        const password =
+          document.getElementById(
+            'regPassword'
+          )?.value;
 
-      // Check username
-      const {
-        data: existingUsername,
-        error: usernameError
-      } =
-        await supabaseClient
-          .from('profiles')
-          .select('id')
-          .eq('username', username)
-          .maybeSingle();
+        if (
+          !username ||
+          !email ||
+          !password
+        ) {
+          showToast(
+            'Please fill in all fields.'
+          );
 
-      if (usernameError) {
-        console.error(usernameError);
-        showToast('Could not check username.');
-        return;
-      }
+          return;
+        }
 
-      if (existingUsername) {
-        showToast('Username is already taken.');
-        return;
-      }
+        if (
+          !/^[a-z0-9_]{3,20}$/.test(
+            username
+          )
+        ) {
+          showToast(
+            'Username must be 3-20 characters and use only letters, numbers, and _.'
+          );
 
-      const redirectUrl =
-        window.location.origin +
-        window.location.pathname;
+          return;
+        }
 
-      const {
-        data,
-        error
-      } =
-        await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
+        // Check username
+        const {
+          data:
+            existingUsername,
+          error:
+            usernameError
+        } =
+          await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq(
+              'username',
               username
-            },
-            emailRedirectTo: redirectUrl
-          }
-        });
+            )
+            .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        showToast(error.message);
-        return;
+        if (usernameError) {
+
+          console.error(
+            usernameError
+          );
+
+          showToast(
+            'Could not check username.'
+          );
+
+          return;
+        }
+
+        if (
+          existingUsername
+        ) {
+          showToast(
+            'Username is already taken.'
+          );
+
+          return;
+        }
+
+        const redirectUrl =
+          window.location.origin +
+          window.location.pathname;
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient.auth.signUp(
+            {
+              email,
+              password,
+
+              options: {
+                data: {
+                  username
+                },
+
+                emailRedirectTo:
+                  redirectUrl
+              }
+            }
+          );
+
+        if (error) {
+
+          console.error(
+            error
+          );
+
+          showToast(
+            error.message
+          );
+
+          return;
+        }
+
+        if (data.session) {
+
+          currentUser =
+            data.user;
+
+          await loadProfile();
+          await loadUserLinks();
+
+          authModal?.classList.add(
+            'hidden'
+          );
+
+          registerForm.reset();
+
+          showToast(
+            `Account created! Welcome @${username}`
+          );
+
+        } else {
+
+          registerForm.reset();
+
+          showToast(
+            'Account created. Check your email to confirm your account.'
+          );
+        }
       }
-
-      if (data.session) {
-        showToast(
-          `Account created! Welcome @${username}`
-        );
-
-        authModal?.classList.add('hidden');
-        registerForm.reset();
-
-        currentUser = data.user;
-
-        await loadProfile();
-        await loadUserLinks();
-      } else {
-        showToast(
-          'Account created. Check your email to confirm your account.'
-        );
-
-        registerForm.reset();
-      }
-    });
+    );
   }
 
   // =========================================================
@@ -488,50 +920,82 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
 
   if (loginForm) {
-    loginForm.addEventListener('submit', async e => {
-      e.preventDefault();
 
-      const email =
-        document.getElementById('loginIdentifier')?.value
-          .trim()
-          .toLowerCase();
+    loginForm.addEventListener(
+      'submit',
+      async e => {
 
-      const password =
-        document.getElementById('loginPassword')?.value;
+        e.preventDefault();
 
-      if (!email || !password) {
-        showToast('Enter your email and password.');
-        return;
+        const email =
+          document.getElementById(
+            'loginIdentifier'
+          )?.value
+            .trim()
+            .toLowerCase();
+
+        const password =
+          document.getElementById(
+            'loginPassword'
+          )?.value;
+
+        if (
+          !email ||
+          !password
+        ) {
+          showToast(
+            'Enter your email and password.'
+          );
+
+          return;
+        }
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient.auth.signInWithPassword(
+            {
+              email,
+              password
+            }
+          );
+
+        if (error) {
+
+          console.error(
+            error
+          );
+
+          showToast(
+            'Invalid email or password.'
+          );
+
+          return;
+        }
+
+        currentUser =
+          data.user;
+
+        await loadProfile();
+        await loadUserLinks();
+
+        updateAuthUI();
+
+        authModal?.classList.add(
+          'hidden'
+        );
+
+        loginForm.reset();
+
+        showToast(
+          `Signed in as @${
+            profile?.username ||
+            email
+          }`
+        );
       }
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient.auth.signInWithPassword({
-          email,
-          password
-        });
-
-      if (error) {
-        console.error(error);
-        showToast('Invalid email or password.');
-        return;
-      }
-
-      currentUser = data.user;
-
-      await loadProfile();
-      await loadUserLinks();
-      updateAuthUI();
-
-      authModal?.classList.add('hidden');
-      loginForm.reset();
-
-      showToast(
-        `Signed in as @${profile?.username || email}`
-      );
-    });
+    );
   }
 
   // =========================================================
@@ -539,235 +1003,488 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
 
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      const { error } =
-        await supabaseClient.auth.signOut();
 
-      if (error) {
-        console.error(error);
-        showToast('Could not log out.');
-        return;
+    logoutBtn.addEventListener(
+      'click',
+      async () => {
+
+        const {
+          error
+        } =
+          await supabaseClient.auth.signOut();
+
+        if (error) {
+
+          console.error(
+            error
+          );
+
+          showToast(
+            'Could not log out.'
+          );
+
+          return;
+        }
+
+        currentUser =
+          null;
+
+        profile =
+          null;
+
+        links =
+          [];
+
+        updateAuthUI();
+        renderDashboard();
+        renderCharts();
+
+        showToast(
+          'Logged out successfully.'
+        );
       }
-
-      currentUser = null;
-      profile = null;
-      links = [];
-
-      updateAuthUI();
-      renderDashboard();
-      renderCharts();
-
-      showToast('Logged out successfully.');
-    });
+    );
   }
 
   // =========================================================
   // AUTH MODAL
   // =========================================================
 
-  openAuthBtn?.addEventListener('click', () => {
-    authModal?.classList.remove('hidden');
-  });
+  if (openAuthBtn) {
+    openAuthBtn.addEventListener(
+      'click',
+      () => {
+        authModal?.classList.remove(
+          'hidden'
+        );
+      }
+    );
+  }
 
-  closeAuthModal?.addEventListener('click', () => {
-    authModal?.classList.add('hidden');
-  });
-
-  tabLoginBtn?.addEventListener('click', () => {
-    tabLoginBtn.classList.add('active');
-    tabRegisterBtn?.classList.remove('active');
-
-    loginForm?.classList.remove('hidden');
-    registerForm?.classList.add('hidden');
-  });
-
-  tabRegisterBtn?.addEventListener('click', () => {
-    tabRegisterBtn.classList.add('active');
-    tabLoginBtn?.classList.remove('active');
-
-    registerForm?.classList.remove('hidden');
-    loginForm?.classList.add('hidden');
-  });
+  if (closeAuthModal) {
+    closeAuthModal.addEventListener(
+      'click',
+      () => {
+        authModal?.classList.add(
+          'hidden'
+        );
+      }
+    );
+  }
 
   // =========================================================
-  // CREATE SHORT LINK
+  // AUTH TABS
+  // =========================================================
+
+  if (tabLoginBtn) {
+
+    tabLoginBtn.addEventListener(
+      'click',
+      () => {
+
+        tabLoginBtn.classList.add(
+          'active'
+        );
+
+        tabRegisterBtn?.classList.remove(
+          'active'
+        );
+
+        loginForm?.classList.remove(
+          'hidden'
+        );
+
+        registerForm?.classList.add(
+          'hidden'
+        );
+      }
+    );
+  }
+
+  if (tabRegisterBtn) {
+
+    tabRegisterBtn.addEventListener(
+      'click',
+      () => {
+
+        tabRegisterBtn.classList.add(
+          'active'
+        );
+
+        tabLoginBtn?.classList.remove(
+          'active'
+        );
+
+        registerForm?.classList.remove(
+          'hidden'
+        );
+
+        loginForm?.classList.add(
+          'hidden'
+        );
+      }
+    );
+  }
+
+  // =========================================================
+  // CREATE LINK
   // =========================================================
 
   if (shortenForm) {
-    shortenForm.addEventListener('submit', async e => {
-      e.preventDefault();
 
-      if (!currentUser) {
-        showToast('Please sign in first.');
-        authModal?.classList.remove('hidden');
-        return;
-      }
+    shortenForm.addEventListener(
+      'submit',
+      async e => {
 
-      const originalUrl =
-        longUrlInput?.value.trim();
+        e.preventDefault();
 
-      const customAlias =
-        customAliasInput?.value.trim();
+        if (!currentUser) {
 
-      const expirationValue =
-        expirationDateInput?.value;
-
-      const password =
-        passwordProtectInput?.value;
-
-      if (!originalUrl) {
-        showToast('Enter a URL.');
-        return;
-      }
-
-      if (!isValidUrl(originalUrl)) {
-        showToast(
-          'Enter a valid HTTP or HTTPS URL.'
-        );
-        return;
-      }
-
-      if (customAlias) {
-        if (!/^[a-zA-Z0-9_-]+$/.test(customAlias)) {
           showToast(
-            'Alias can only contain letters, numbers, - and _.'
+            'Please sign in first.'
           );
+
+          authModal?.classList.remove(
+            'hidden'
+          );
+
           return;
         }
 
-        const {
-          data: existingAlias,
-          error: aliasError
-        } =
-          await supabaseClient
-            .from('links')
-            .select('id')
-            .eq('alias', customAlias)
-            .maybeSingle();
+        const originalUrl =
+          longUrlInput?.value.trim();
 
-        if (aliasError) {
-          console.error(aliasError);
-          showToast('Could not check alias.');
+        const customAlias =
+          customAliasInput?.value.trim();
+
+        const expirationValue =
+          expirationDateInput?.value;
+
+        const password =
+          passwordProtectInput?.value;
+
+        if (!originalUrl) {
+
+          showToast(
+            'Enter a URL.'
+          );
+
           return;
         }
 
-        if (existingAlias) {
-          showToast('That alias is already in use.');
+        if (
+          !isValidUrl(
+            originalUrl
+          )
+        ) {
+
+          showToast(
+            'Enter a valid HTTP or HTTPS URL.'
+          );
+
           return;
         }
-      }
 
-      let alias =
-        customAlias || generateAlias();
+        // Custom alias
+        if (customAlias) {
 
-      // Avoid duplicate generated aliases
-      if (!customAlias) {
-        let attempts = 0;
+          if (
+            !/^[a-zA-Z0-9_-]+$/.test(
+              customAlias
+            )
+          ) {
 
-        while (attempts < 10) {
+            showToast(
+              'Alias can only contain letters, numbers, - and _.'
+            );
+
+            return;
+          }
+
           const {
-            data: exists
+            data:
+              existingAlias,
+            error:
+              aliasError
           } =
             await supabaseClient
               .from('links')
               .select('id')
-              .eq('alias', alias)
+              .eq(
+                'alias',
+                customAlias
+              )
               .maybeSingle();
 
-          if (!exists) break;
+          if (aliasError) {
 
-          alias = generateAlias();
-          attempts++;
+            console.error(
+              aliasError
+            );
+
+            showToast(
+              'Could not check alias.'
+            );
+
+            return;
+          }
+
+          if (
+            existingAlias
+          ) {
+
+            showToast(
+              'That alias is already in use.'
+            );
+
+            return;
+          }
         }
-      }
 
-      let expiration = null;
+        let alias =
+          customAlias ||
+          generateAlias();
 
-      if (expirationValue) {
-        const date = new Date(
-          `${expirationValue}T23:59:59`
+        // Check generated alias
+        if (!customAlias) {
+
+          let attempts = 0;
+
+          while (
+            attempts < 10
+          ) {
+
+            const {
+              data:
+                existing
+            } =
+              await supabaseClient
+                .from('links')
+                .select('id')
+                .eq(
+                  'alias',
+                  alias
+                )
+                .maybeSingle();
+
+            if (!existing) {
+              break;
+            }
+
+            alias =
+              generateAlias();
+
+            attempts++;
+          }
+        }
+
+        let expiration =
+          null;
+
+        if (
+          expirationValue
+        ) {
+
+          const date =
+            new Date(
+              `${expirationValue}T23:59:59`
+            );
+
+          if (
+            !Number.isNaN(
+              date.getTime()
+            )
+          ) {
+            expiration =
+              date.toISOString();
+          }
+        }
+
+        // Disable button
+        const shortenBtn =
+          document.getElementById(
+            'shortenBtn'
+          );
+
+        const btnText =
+          shortenBtn?.querySelector(
+            '.btn-text'
+          );
+
+        const spinner =
+          shortenBtn?.querySelector(
+            '.spinner'
+          );
+
+        if (shortenBtn) {
+          shortenBtn.disabled =
+            true;
+        }
+
+        if (btnText) {
+          btnText.textContent =
+            'Saving...';
+        }
+
+        if (spinner) {
+          spinner.classList.remove(
+            'hidden'
+          );
+        }
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .from('links')
+            .insert({
+              user_id:
+                currentUser.id,
+
+              alias,
+
+              original_url:
+                originalUrl,
+
+              expiration,
+
+              password:
+                password ||
+                null,
+
+              clicks:
+                0,
+
+              is_favorite:
+                false,
+
+              referrers: {
+                Direct: 0,
+                Google: 0,
+                Twitter: 0,
+                LinkedIn: 0
+              }
+            })
+            .select('*')
+            .single();
+
+        if (shortenBtn) {
+          shortenBtn.disabled =
+            false;
+        }
+
+        if (btnText) {
+          btnText.textContent =
+            'Shorten';
+        }
+
+        if (spinner) {
+          spinner.classList.add(
+            'hidden'
+          );
+        }
+
+        if (error) {
+
+          console.error(
+            'Insert error:',
+            error
+          );
+
+          if (
+            error.code ===
+            '23505'
+          ) {
+
+            showToast(
+              'That alias already exists.'
+            );
+
+          } else {
+
+            showToast(
+              'Could not create the short link.'
+            );
+          }
+
+          return;
+        }
+
+        const newLink = {
+          id:
+            data.id,
+
+          userId:
+            data.user_id,
+
+          alias:
+            data.alias,
+
+          originalUrl:
+            data.original_url,
+
+          shortUrl:
+            createShortUrl(
+              data.alias
+            ),
+
+          createdAt:
+            data.created_at,
+
+          expiration:
+            data.expiration,
+
+          password:
+            data.password,
+
+          clicks:
+            Number(
+              data.clicks || 0
+            ),
+
+          isFavorite:
+            Boolean(
+              data.is_favorite
+            ),
+
+          referrers:
+            data.referrers || {
+              Direct: 0,
+              Google: 0,
+              Twitter: 0,
+              LinkedIn: 0
+            }
+        };
+
+        links.unshift(
+          newLink
         );
 
-        if (!Number.isNaN(date.getTime())) {
-          expiration = date.toISOString();
-        }
+        renderResult(
+          newLink
+        );
+
+        renderDashboard();
+        renderCharts();
+
+        shortenForm.reset();
+
+        showToast(
+          'URL shortened successfully!'
+        );
       }
-
-      const row = {
-        user_id: currentUser.id,
-        alias,
-        original_url: originalUrl,
-        expiration,
-        password: password || null,
-        clicks: 0,
-        is_favorite: false,
-        referrers: {
-          Direct: 0,
-          Google: 0,
-          Twitter: 0,
-          LinkedIn: 0
-        }
-      };
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from('links')
-          .insert(row)
-          .select('*')
-          .single();
-
-      if (error) {
-        console.error(error);
-
-        if (error.code === '23505') {
-          showToast(
-            'That alias already exists.'
-          );
-        } else {
-          showToast(
-            'Could not create the short link.'
-          );
-        }
-
-        return;
-      }
-
-      const newLink = {
-        id: data.id,
-        userId: data.user_id,
-        alias: data.alias,
-        originalUrl: data.original_url,
-        shortUrl: createShortUrl(data.alias),
-        createdAt: data.created_at,
-        expiration: data.expiration,
-        password: data.password,
-        clicks: data.clicks,
-        isFavorite: data.is_favorite,
-        referrers: data.referrers
-      };
-
-      links.unshift(newLink);
-
-      renderResult(newLink);
-      renderDashboard();
-      renderCharts();
-
-      shortenForm.reset();
-
-      showToast(
-        'URL shortened successfully!'
-      );
-    });
+    );
   }
 
   // =========================================================
-  // RESULT
+  // RESULT CARD
   // =========================================================
 
-  function renderResult(link) {
+  function renderResult(
+    link
+  ) {
+
     if (resultShortUrl) {
       resultShortUrl.value =
         link.shortUrl;
@@ -789,27 +1506,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (qrcodeContainer) {
-      qrcodeContainer.innerHTML = '';
 
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(qrcodeContainer, {
-          text: link.shortUrl,
-          width: 100,
-          height: 100,
-          colorDark: '#111827',
-          colorLight: '#ffffff',
-          correctLevel:
-            QRCode.CorrectLevel.H
-        });
+      qrcodeContainer.innerHTML =
+        '';
+
+      if (
+        typeof QRCode !==
+        'undefined'
+      ) {
+
+        new QRCode(
+          qrcodeContainer,
+          {
+            text:
+              link.shortUrl,
+
+            width:
+              100,
+
+            height:
+              100,
+
+            colorDark:
+              '#111827',
+
+            colorLight:
+              '#ffffff',
+
+            correctLevel:
+              QRCode.CorrectLevel.H
+          }
+        );
       }
     }
 
     if (resultCard) {
-      resultCard.classList.remove('hidden');
 
-      resultCard.scrollIntoView({
-        behavior: 'smooth'
-      });
+      resultCard.classList.remove(
+        'hidden'
+      );
+
+      resultCard.scrollIntoView(
+        {
+          behavior:
+            'smooth'
+        }
+      );
     }
   }
 
@@ -817,67 +1559,120 @@ document.addEventListener('DOMContentLoaded', async () => {
   // COPY
   // =========================================================
 
-  copyResultBtn?.addEventListener('click', async () => {
-    if (!resultShortUrl) return;
+  if (copyResultBtn) {
 
-    const success =
-      await copyToClipboard(
-        resultShortUrl.value
-      );
+    copyResultBtn.addEventListener(
+      'click',
+      async () => {
 
-    if (success) {
-      copyResultBtn.textContent = 'Copied!';
+        if (!resultShortUrl) {
+          return;
+        }
 
-      setTimeout(() => {
-        copyResultBtn.textContent = 'Copy';
-      }, 2000);
+        const success =
+          await copyToClipboard(
+            resultShortUrl.value
+          );
 
-      showToast('Copied to clipboard.');
-    } else {
-      showToast('Could not copy the link.');
-    }
-  });
+        if (success) {
 
-  window.copyLink = async url => {
-    const success =
-      await copyToClipboard(url);
+          copyResultBtn.textContent =
+            'Copied!';
 
-    showToast(
-      success
-        ? 'Link copied to clipboard.'
-        : 'Could not copy the link.'
+          setTimeout(
+            () => {
+              copyResultBtn.textContent =
+                'Copy';
+            },
+            2000
+          );
+
+          showToast(
+            'Copied to clipboard.'
+          );
+
+        } else {
+
+          showToast(
+            'Could not copy the link.'
+          );
+        }
+      }
     );
-  };
+  }
+
+  window.copyLink =
+    async url => {
+
+      const success =
+        await copyToClipboard(
+          url
+        );
+
+      showToast(
+        success
+          ? 'Link copied to clipboard.'
+          : 'Could not copy the link.'
+      );
+    };
 
   // =========================================================
   // QR DOWNLOAD
   // =========================================================
 
-  downloadQrBtn?.addEventListener('click', () => {
-    const img =
-      qrcodeContainer?.querySelector('img');
+  if (downloadQrBtn) {
 
-    if (!img?.src) {
-      showToast('QR code is not ready.');
-      return;
-    }
+    downloadQrBtn.addEventListener(
+      'click',
+      () => {
 
-    const a =
-      document.createElement('a');
+        const img =
+          qrcodeContainer?.querySelector(
+            'img'
+          );
 
-    a.href = img.src;
-    a.download = 'linklite-qr.png';
+        if (
+          !img ||
+          !img.src
+        ) {
 
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  });
+          showToast(
+            'QR code is not ready.'
+          );
+
+          return;
+        }
+
+        const a =
+          document.createElement(
+            'a'
+          );
+
+        a.href =
+          img.src;
+
+        a.download =
+          'linklite-qr.png';
+
+        document.body.appendChild(
+          a
+        );
+
+        a.click();
+
+        a.remove();
+      }
+    );
+  }
 
   // =========================================================
-  // PUBLIC REDIRECT LOOKUP
+  // PUBLIC LINK LOOKUP
   // =========================================================
 
-  async function getPublicLink(alias) {
+  async function getPublicLink(
+    alias
+  ) {
+
     const {
       data,
       error
@@ -885,50 +1680,79 @@ document.addEventListener('DOMContentLoaded', async () => {
       await supabaseClient.rpc(
         'get_link_by_alias',
         {
-          requested_alias: alias
+          requested_alias:
+            alias
         }
       );
 
     if (error) {
+
       console.error(
-        'Public link lookup error:',
+        'Public lookup error:',
         error
       );
 
       return null;
     }
 
-    if (!data || data.length === 0) {
+    if (
+      !data ||
+      data.length ===
+        0
+    ) {
       return null;
     }
 
-    const row = data[0];
+    const row =
+      data[0];
 
     return {
-      id: row.id,
-      alias: row.alias,
-      originalUrl: row.original_url,
-      expiration: row.expiration,
-      password: row.password,
-      clicks: Number(row.clicks || 0),
-      referrers: row.referrers || {}
+      id:
+        row.id,
+
+      alias:
+        row.alias,
+
+      originalUrl:
+        row.original_url,
+
+      expiration:
+        row.expiration,
+
+      password:
+        row.password,
+
+      clicks:
+        Number(
+          row.clicks || 0
+        ),
+
+      referrers:
+        row.referrers || {}
     };
   }
 
   // =========================================================
-  // RECORD PUBLIC CLICK
+  // CLICK TRACKING
   // =========================================================
 
-  async function recordPublicClick(id) {
-    const { error } =
+  async function recordPublicClick(
+    id
+  ) {
+
+    const {
+      error
+    } =
       await supabaseClient.rpc(
         'record_link_click',
         {
-          link_id: id
+          link_id:
+            id
         }
       );
 
     if (error) {
+
       console.error(
         'Click tracking error:',
         error
@@ -937,10 +1761,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // =========================================================
-  // REDIRECT
+  // HASH ROUTING
   // =========================================================
 
   async function handleHashRouting() {
+
     if (redirectInProgress) {
       return;
     }
@@ -948,7 +1773,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hash =
       window.location.hash;
 
-    if (!hash || hash.length <= 1) {
+    if (
+      !hash ||
+      hash.length <= 1
+    ) {
       return;
     }
 
@@ -959,87 +1787,158 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (
       !alias ||
-      ['hero', 'dashboard', 'analytics']
-        .includes(alias)
+      [
+        'hero',
+        'dashboard',
+        'analytics'
+      ].includes(alias)
     ) {
       return;
     }
 
-    let link =
-      await getPublicLink(alias);
+    const link =
+      await getPublicLink(
+        alias
+      );
 
     if (!link) {
-      showToast('Short link not found.');
+
+      showToast(
+        'Short link not found.'
+      );
+
       return;
     }
 
-    if (isExpired(link.expiration)) {
-      showToast('This link has expired.');
+    if (
+      isExpired(
+        link.expiration
+      )
+    ) {
+
+      showToast(
+        'This link has expired.'
+      );
+
       return;
     }
 
     if (
       !link.originalUrl ||
-      !isValidUrl(link.originalUrl)
+      !isValidUrl(
+        link.originalUrl
+      )
     ) {
-      showToast('Invalid destination URL.');
+
+      showToast(
+        'Invalid destination URL.'
+      );
+
       return;
     }
 
     if (link.password) {
-      pendingRedirectLink = link;
 
-      passwordModal?.classList.remove('hidden');
-      passwordError?.classList.add('hidden');
+      pendingRedirectLink =
+        link;
+
+      passwordModal?.classList.remove(
+        'hidden'
+      );
+
+      passwordError?.classList.add(
+        'hidden'
+      );
 
       if (linkPasswordInput) {
-        linkPasswordInput.value = '';
+
+        linkPasswordInput.value =
+          '';
+
         linkPasswordInput.focus();
       }
 
       return;
     }
 
-    await executeRedirect(link);
+    await executeRedirect(
+      link
+    );
   }
 
-  async function executeRedirect(link) {
+  // =========================================================
+  // EXECUTE REDIRECT
+  // =========================================================
+
+  async function executeRedirect(
+    link
+  ) {
+
     if (redirectInProgress) {
       return;
     }
 
-    redirectInProgress = true;
-
-    await recordPublicClick(link.id);
-
-    setTimeout(() => {
-      window.location.replace(
+    if (
+      !link ||
+      !link.originalUrl ||
+      !isValidUrl(
         link.originalUrl
+      )
+    ) {
+
+      showToast(
+        'Invalid destination URL.'
       );
-    }, REDIRECT_DELAY);
+
+      return;
+    }
+
+    redirectInProgress =
+      true;
+
+    await recordPublicClick(
+      link.id
+    );
+
+    setTimeout(
+      () => {
+
+        window.location.replace(
+          link.originalUrl
+        );
+
+      },
+      REDIRECT_DELAY
+    );
   }
 
   // =========================================================
-  // PASSWORD-PROTECTED REDIRECT
+  // PASSWORD PROTECTED LINK
   // =========================================================
 
   if (passwordForm) {
+
     passwordForm.addEventListener(
       'submit',
       async e => {
+
         e.preventDefault();
 
-        if (!pendingRedirectLink) {
+        if (
+          !pendingRedirectLink
+        ) {
           return;
         }
 
         const enteredPassword =
-          linkPasswordInput?.value || '';
+          linkPasswordInput?.value ||
+          '';
 
         if (
           enteredPassword !==
           pendingRedirectLink.password
         ) {
+
           passwordError?.classList.remove(
             'hidden'
           );
@@ -1067,13 +1966,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================
 
   function renderDashboard() {
+
     const totalLinks =
       links.length;
 
     const totalClicks =
       links.reduce(
-        (sum, link) =>
-          sum + Number(link.clicks || 0),
+        (
+          sum,
+          link
+        ) =>
+          sum +
+          Number(
+            link.clicks || 0
+          ),
         0
       );
 
@@ -1086,51 +1992,70 @@ document.addEventListener('DOMContentLoaded', async () => {
       links
         .filter(
           link =>
-            link.createdAt?.startsWith(today)
+            link.createdAt &&
+            link.createdAt.startsWith(
+              today
+            )
         )
         .reduce(
-          (sum, link) =>
-            sum + Number(link.clicks || 0),
+          (
+            sum,
+            link
+          ) =>
+            sum +
+            Number(
+              link.clicks || 0
+            ),
           0
         );
 
     const activeLinks =
       links.filter(
         link =>
-          !isExpired(link.expiration)
+          !isExpired(
+            link.expiration
+          )
       ).length;
 
-    document.getElementById(
-      'metricTotalLinks'
-    )?.replaceChildren(
-      document.createTextNode(
-        String(totalLinks)
-      )
-    );
+    const metricTotalLinks =
+      document.getElementById(
+        'metricTotalLinks'
+      );
 
-    document.getElementById(
-      'metricTotalClicks'
-    )?.replaceChildren(
-      document.createTextNode(
-        String(totalClicks)
-      )
-    );
+    const metricTotalClicks =
+      document.getElementById(
+        'metricTotalClicks'
+      );
 
-    document.getElementById(
-      'metricTodayClicks'
-    )?.replaceChildren(
-      document.createTextNode(
-        String(todayClicks)
-      )
-    );
+    const metricTodayClicks =
+      document.getElementById(
+        'metricTodayClicks'
+      );
 
-    document.getElementById(
-      'metricActiveLinks'
-    )?.replaceChildren(
-      document.createTextNode(
-        String(activeLinks)
-      )
-    );
+    const metricActiveLinks =
+      document.getElementById(
+        'metricActiveLinks'
+      );
+
+    if (metricTotalLinks) {
+      metricTotalLinks.textContent =
+        totalLinks;
+    }
+
+    if (metricTotalClicks) {
+      metricTotalClicks.textContent =
+        totalClicks;
+    }
+
+    if (metricTodayClicks) {
+      metricTodayClicks.textContent =
+        todayClicks;
+    }
+
+    if (metricActiveLinks) {
+      metricActiveLinks.textContent =
+        activeLinks;
+    }
 
     if (!linksTableBody) {
       return;
@@ -1139,6 +2064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let filtered =
       [...links];
 
+    // Search
     const query =
       searchInput
         ? searchInput.value
@@ -1147,39 +2073,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         : '';
 
     if (query) {
+
       filtered =
         filtered.filter(
           link =>
             link.alias
               .toLowerCase()
-              .includes(query) ||
+              .includes(
+                query
+              ) ||
             link.originalUrl
               .toLowerCase()
-              .includes(query)
+              .includes(
+                query
+              )
         );
     }
 
+    // Status
     const status =
       statusFilter?.value ||
       'all';
 
-    if (status === 'active') {
+    if (
+      status ===
+      'active'
+    ) {
+
       filtered =
         filtered.filter(
           link =>
-            !isExpired(link.expiration)
+            !isExpired(
+              link.expiration
+            )
         );
     }
 
-    if (status === 'expired') {
+    if (
+      status ===
+      'expired'
+    ) {
+
       filtered =
         filtered.filter(
           link =>
-            isExpired(link.expiration)
+            isExpired(
+              link.expiration
+            )
         );
     }
 
-    if (status === 'favorite') {
+    if (
+      status ===
+      'favorite'
+    ) {
+
       filtered =
         filtered.filter(
           link =>
@@ -1187,40 +2135,82 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
     }
 
+    // Sort
     const sort =
       sortSelect?.value ||
       'newest';
 
-    if (sort === 'newest') {
+    if (
+      sort ===
+      'newest'
+    ) {
+
       filtered.sort(
-        (a, b) =>
-          new Date(b.createdAt) -
-          new Date(a.createdAt)
+        (
+          a,
+          b
+        ) =>
+          new Date(
+            b.createdAt
+          ) -
+          new Date(
+            a.createdAt
+          )
       );
     }
 
-    if (sort === 'oldest') {
+    if (
+      sort ===
+      'oldest'
+    ) {
+
       filtered.sort(
-        (a, b) =>
-          new Date(a.createdAt) -
-          new Date(b.createdAt)
+        (
+          a,
+          b
+        ) =>
+          new Date(
+            a.createdAt
+          ) -
+          new Date(
+            b.createdAt
+          )
       );
     }
 
-    if (sort === 'clicks') {
+    if (
+      sort ===
+      'clicks'
+    ) {
+
       filtered.sort(
-        (a, b) =>
-          Number(b.clicks || 0) -
-          Number(a.clicks || 0)
+        (
+          a,
+          b
+        ) =>
+          Number(
+            b.clicks ||
+              0
+          ) -
+          Number(
+            a.clicks ||
+              0
+          )
       );
     }
 
-    linksTableBody.innerHTML = '';
+    linksTableBody.innerHTML =
+      '';
 
-    if (filtered.length === 0) {
+    if (
+      filtered.length ===
+      0
+    ) {
+
       emptyState?.classList.remove(
         'hidden'
       );
+
       return;
     }
 
@@ -1228,299 +2218,429 @@ document.addEventListener('DOMContentLoaded', async () => {
       'hidden'
     );
 
-    filtered.forEach(link => {
-      const tr =
-        document.createElement('tr');
+    filtered.forEach(
+      link => {
 
-      const expired =
-        isExpired(link.expiration);
+        const tr =
+          document.createElement(
+            'tr'
+          );
 
-      tr.innerHTML = `
-        <td>
-          <a
-            href="${escapeHtml(link.shortUrl)}"
-            target="_blank"
-            rel="noopener noreferrer"
-            style="font-weight: 600;"
+        const expired =
+          isExpired(
+            link.expiration
+          );
+
+        tr.innerHTML = `
+          <td>
+            <a
+              href="${escapeHtml(
+                link.shortUrl
+              )}"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="font-weight:600;"
+            >
+              /${escapeHtml(
+                link.alias
+              )}
+            </a>
+
+            ${
+              link.password
+                ? ' 🔒'
+                : ''
+            }
+          </td>
+
+          <td
+            style="
+              max-width:250px;
+              overflow:hidden;
+              text-overflow:ellipsis;
+              white-space:nowrap;
+            "
+            title="${escapeHtml(
+              link.originalUrl
+            )}"
           >
-            /${escapeHtml(link.alias)}
-          </a>
-          ${link.password ? ' 🔒' : ''}
-        </td>
+            ${escapeHtml(
+              link.originalUrl
+            )}
+          </td>
 
-        <td
-          style="
-            max-width:250px;
-            overflow:hidden;
-            text-overflow:ellipsis;
-            white-space:nowrap;
-          "
-          title="${escapeHtml(link.originalUrl)}"
-        >
-          ${escapeHtml(link.originalUrl)}
-        </td>
+          <td>
+            ${Number(
+              link.clicks ||
+                0
+            )}
+          </td>
 
-        <td>
-          ${Number(link.clicks || 0)}
-        </td>
+          <td>
+            <span
+              class="badge ${
+                expired
+                  ? 'badge-danger'
+                  : 'badge-success'
+              }"
+            >
+              ${
+                expired
+                  ? 'Expired'
+                  : 'Active'
+              }
+            </span>
+          </td>
 
-        <td>
-          <span
-            class="badge ${
-              expired
-                ? 'badge-danger'
-                : 'badge-success'
-            }"
-          >
-            ${expired ? 'Expired' : 'Active'}
-          </span>
-        </td>
+          <td>
+            ${new Date(
+              link.createdAt
+            ).toLocaleDateString()}
+          </td>
 
-        <td>
-          ${new Date(
-            link.createdAt
-          ).toLocaleDateString()}
-        </td>
+          <td class="text-right">
 
-        <td class="text-right">
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="toggleFavorite('${link.id}')"
+            >
+              ${
+                link.isFavorite
+                  ? '★'
+                  : '☆'
+              }
+            </button>
 
-          <button
-            class="btn btn-secondary btn-sm"
-            onclick="toggleFavorite('${link.id}')"
-          >
-            ${link.isFavorite ? '★' : '☆'}
-          </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="copyLink('${escapeHtml(
+                link.shortUrl
+              )}')"
+            >
+              Copy
+            </button>
 
-          <button
-            class="btn btn-secondary btn-sm"
-            onclick="copyLink('${escapeHtml(link.shortUrl)}')"
-          >
-            Copy
-          </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="deleteLink('${link.id}')"
+            >
+              Delete
+            </button>
 
-          <button
-            class="btn btn-secondary btn-sm"
-            onclick="deleteLink('${link.id}')"
-          >
-            Delete
-          </button>
+          </td>
+        `;
 
-        </td>
-      `;
-
-      linksTableBody.appendChild(tr);
-    });
+        linksTableBody.appendChild(
+          tr
+        );
+      }
+    );
   }
 
   // =========================================================
   // DELETE
   // =========================================================
 
-  window.deleteLink = async id => {
-    const { error } =
-      await supabaseClient
-        .from('links')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', currentUser.id);
+  window.deleteLink =
+    async id => {
 
-    if (error) {
-      console.error(error);
-      showToast('Could not delete link.');
-      return;
-    }
+      if (!currentUser) {
+        return;
+      }
 
-    links =
-      links.filter(
-        link => link.id !== id
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('links')
+          .delete()
+          .eq(
+            'id',
+            id
+          )
+          .eq(
+            'user_id',
+            currentUser.id
+          );
+
+      if (error) {
+
+        console.error(
+          'Delete error:',
+          error
+        );
+
+        showToast(
+          'Could not delete link.'
+        );
+
+        return;
+      }
+
+      links =
+        links.filter(
+          link =>
+            link.id !== id
+        );
+
+      renderDashboard();
+      renderCharts();
+
+      showToast(
+        'Link deleted.'
       );
-
-    renderDashboard();
-    renderCharts();
-
-    showToast('Link deleted.');
-  };
+    };
 
   // =========================================================
   // FAVORITE
   // =========================================================
 
-  window.toggleFavorite = async id => {
-    const link =
-      links.find(
-        item => item.id === id
-      );
+  window.toggleFavorite =
+    async id => {
 
-    if (!link) return;
-
-    const nextValue =
-      !link.isFavorite;
-
-    const { error } =
-      await supabaseClient
-        .from('links')
-        .update({
-          is_favorite:
-            nextValue
-        })
-        .eq('id', id)
-        .eq('user_id', currentUser.id);
-
-    if (error) {
-      console.error(error);
-      showToast('Could not update favorite.');
-      return;
-    }
-
-    link.isFavorite =
-      nextValue;
-
-    renderDashboard();
-  };
-
-  // =========================================================
-  // SEARCH / FILTERS
-  // =========================================================
-
-  searchInput?.addEventListener(
-    'input',
-    renderDashboard
-  );
-
-  statusFilter?.addEventListener(
-    'change',
-    renderDashboard
-  );
-
-  sortSelect?.addEventListener(
-    'change',
-    renderDashboard
-  );
-
-  // =========================================================
-  // DRAG / DROP
-  // =========================================================
-
-  dropZone?.addEventListener(
-    'dragover',
-    e => {
-      e.preventDefault();
-
-      dropZone.classList.add(
-        'dragover'
-      );
-    }
-  );
-
-  dropZone?.addEventListener(
-    'dragleave',
-    () => {
-      dropZone.classList.remove(
-        'dragover'
-      );
-    }
-  );
-
-  dropZone?.addEventListener(
-    'drop',
-    e => {
-      e.preventDefault();
-
-      dropZone.classList.remove(
-        'dragover'
-      );
-
-      const value =
-        e.dataTransfer.getData(
-          'text'
-        );
-
-      if (
-        value &&
-        longUrlInput &&
-        isValidUrl(value)
-      ) {
-        longUrlInput.value =
-          value.trim();
-      }
-    }
-  );
-
-  // =========================================================
-  // CSV
-  // =========================================================
-
-  exportCsvBtn?.addEventListener(
-    'click',
-    () => {
-      if (links.length === 0) {
-        showToast(
-          'No links to export.'
-        );
+      if (!currentUser) {
         return;
       }
 
-      const header =
-        'Alias,Short URL,Original URL,Clicks,Created At\n';
-
-      const rows =
-        links.map(
-          link =>
-            `"${escapeCsv(link.alias)}","${escapeCsv(
-              link.shortUrl
-            )}","${escapeCsv(
-              link.originalUrl
-            )}",${Number(
-              link.clicks || 0
-            )},"${escapeCsv(
-              link.createdAt
-            )}"`
+      const link =
+        links.find(
+          item =>
+            item.id === id
         );
 
-      const blob =
-        new Blob(
-          [header + rows.join('\n')],
-          {
-            type:
-              'text/csv;charset=utf-8'
-          }
+      if (!link) {
+        return;
+      }
+
+      const nextValue =
+        !link.isFavorite;
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('links')
+          .update({
+            is_favorite:
+              nextValue
+          })
+          .eq(
+            'id',
+            id
+          )
+          .eq(
+            'user_id',
+            currentUser.id
+          );
+
+      if (error) {
+
+        console.error(
+          'Favorite update error:',
+          error
         );
 
-      const url =
-        URL.createObjectURL(blob);
+        showToast(
+          'Could not update favorite.'
+        );
 
-      const a =
-        document.createElement('a');
+        return;
+      }
 
-      a.href = url;
-      a.download =
-        'linklite-export.csv';
+      link.isFavorite =
+        nextValue;
 
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      renderDashboard();
+    };
 
-      URL.revokeObjectURL(url);
+  // =========================================================
+  // SEARCH
+  // =========================================================
 
-      showToast(
-        'CSV exported.'
-      );
-    }
-  );
+  if (searchInput) {
+    searchInput.addEventListener(
+      'input',
+      renderDashboard
+    );
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener(
+      'change',
+      renderDashboard
+    );
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener(
+      'change',
+      renderDashboard
+    );
+  }
+
+  // =========================================================
+  // DRAG & DROP
+  // =========================================================
+
+  if (dropZone) {
+
+    dropZone.addEventListener(
+      'dragover',
+      e => {
+
+        e.preventDefault();
+
+        dropZone.classList.add(
+          'dragover'
+        );
+      }
+    );
+
+    dropZone.addEventListener(
+      'dragleave',
+      () => {
+
+        dropZone.classList.remove(
+          'dragover'
+        );
+      }
+    );
+
+    dropZone.addEventListener(
+      'drop',
+      e => {
+
+        e.preventDefault();
+
+        dropZone.classList.remove(
+          'dragover'
+        );
+
+        const value =
+          e.dataTransfer.getData(
+            'text'
+          );
+
+        if (
+          value &&
+          longUrlInput &&
+          isValidUrl(value)
+        ) {
+
+          longUrlInput.value =
+            value.trim();
+        }
+      }
+    );
+  }
+
+  // =========================================================
+  // CSV EXPORT
+  // =========================================================
+
+  if (exportCsvBtn) {
+
+    exportCsvBtn.addEventListener(
+      'click',
+      () => {
+
+        if (
+          links.length ===
+          0
+        ) {
+
+          showToast(
+            'No links to export.'
+          );
+
+          return;
+        }
+
+        const header =
+          'Alias,Short URL,Original URL,Clicks,Created At\n';
+
+        const rows =
+          links.map(
+            link =>
+              `"${escapeCsv(
+                link.alias
+              )}","${escapeCsv(
+                link.shortUrl
+              )}","${escapeCsv(
+                link.originalUrl
+              )}",${Number(
+                link.clicks ||
+                  0
+              )},"${escapeCsv(
+                link.createdAt
+              )}"`
+          );
+
+        const blob =
+          new Blob(
+            [
+              header +
+              rows.join('\n')
+            ],
+            {
+              type:
+                'text/csv;charset=utf-8'
+            }
+          );
+
+        const url =
+          URL.createObjectURL(
+            blob
+          );
+
+        const a =
+          document.createElement(
+            'a'
+          );
+
+        a.href =
+          url;
+
+        a.download =
+          'linklite-export.csv';
+
+        document.body.appendChild(
+          a
+        );
+
+        a.click();
+
+        a.remove();
+
+        URL.revokeObjectURL(
+          url
+        );
+
+        showToast(
+          'CSV exported.'
+        );
+      }
+    );
+  }
 
   // =========================================================
   // CHARTS
   // =========================================================
 
   function renderCharts() {
-    if (typeof Chart === 'undefined') {
+
+    if (
+      typeof Chart ===
+      'undefined'
+    ) {
       return;
     }
 
     const isDark =
       document.documentElement.getAttribute(
         'data-theme'
-      ) === 'dark';
+      ) ===
+      'dark';
 
     const textColor =
       isDark
@@ -1534,8 +2654,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const totalClicks =
       links.reduce(
-        (sum, link) =>
-          sum + Number(link.clicks || 0),
+        (
+          sum,
+          link
+        ) =>
+          sum +
+          Number(
+            link.clicks ||
+              0
+          ),
         0
       );
 
@@ -1546,33 +2673,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       LinkedIn: 0
     };
 
-    links.forEach(link => {
-      const refs =
-        link.referrers || {};
+    links.forEach(
+      link => {
 
-      Object.keys(
-        referrerTotals
-      ).forEach(key => {
-        referrerTotals[key] +=
-          Number(refs[key] || 0);
-      });
-    });
+        const refs =
+          link.referrers ||
+          {};
 
+        Object.keys(
+          referrerTotals
+        ).forEach(
+          key => {
+
+            referrerTotals[
+              key
+            ] +=
+              Number(
+                refs[key] ||
+                  0
+              );
+          }
+        );
+      }
+    );
+
+    // Clicks chart
     const clicksElem =
       document.getElementById(
         'clicksChart'
       );
 
     if (clicksElem) {
-      if (clicksChartInstance) {
+
+      if (
+        clicksChartInstance
+      ) {
         clicksChartInstance.destroy();
       }
 
       clicksChartInstance =
         new Chart(
-          clicksElem.getContext('2d'),
+          clicksElem.getContext(
+            '2d'
+          ),
           {
-            type: 'line',
+            type:
+              'line',
 
             data: {
               labels: [
@@ -1594,20 +2740,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     '#2563EB',
 
                   backgroundColor:
-                    'rgba(37, 99, 235, 0.1)',
+                    'rgba(37,99,235,0.1)',
 
-                  fill: true,
-                  tension: 0.3
+                  fill:
+                    true,
+
+                  tension:
+                    0.3
                 }
               ]
             },
 
             options: {
-              responsive: true,
+              responsive:
+                true,
 
               plugins: {
                 legend: {
-                  display: false
+                  display:
+                    false
                 }
               },
 
@@ -1625,7 +2776,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 },
 
                 y: {
-                  beginAtZero: true,
+                  beginAtZero:
+                    true,
 
                   ticks: {
                     color:
@@ -1643,21 +2795,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
     }
 
+    // Referrer chart
     const refElem =
       document.getElementById(
         'referrerChart'
       );
 
     if (refElem) {
-      if (referrerChartInstance) {
+
+      if (
+        referrerChartInstance
+      ) {
         referrerChartInstance.destroy();
       }
 
       referrerChartInstance =
         new Chart(
-          refElem.getContext('2d'),
+          refElem.getContext(
+            '2d'
+          ),
           {
-            type: 'doughnut',
+            type:
+              'doughnut',
 
             data: {
               labels:
@@ -1683,11 +2842,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
 
             options: {
-              responsive: true,
+              responsive:
+                true,
 
               plugins: {
                 legend: {
-                  position: 'bottom',
+                  position:
+                    'bottom',
 
                   labels: {
                     color:
@@ -1713,13 +2874,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await supabaseClient.auth.getSession();
 
   currentUser =
-    sessionData.session?.user || null;
+    sessionData.session?.user ||
+    null;
 
   await loadProfile();
   await loadUserLinks();
 
-  // Important:
-  // Public hash routing does not require login.
+  // Handle /#alias after everything is initialized
   await handleHashRouting();
 
 });
