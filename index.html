@@ -3,280 +3,1247 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>LinkLite — Shorten URLs. Share Smarter.</title>
-  
-  <!-- Logo / Favicon Links -->
-  <link rel="icon" type="image/svg+xml" href="logo.svg" />
-  <link rel="icon" type="image/png" sizes="32x32" href="logo-32x32.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-  
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Chart.js for Analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- QRCode.js for generating QR codes -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  
-  <link rel="stylesheet" href="style.css" />
+
+  <!-- ===================================================== -->
+  <!-- FAVICONS -->
+  <!-- ===================================================== -->
+
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="logo.svg"
+  />
+
+  <link
+    rel="icon"
+    type="image/png"
+    sizes="32x32"
+    href="logo-32x32.png"
+  />
+
+  <link
+    rel="apple-touch-icon"
+    sizes="180x180"
+    href="apple-touch-icon.png"
+  />
+
+  <!-- ===================================================== -->
+  <!-- GOOGLE FONT -->
+  <!-- ===================================================== -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- ===================================================== -->
+  <!-- CHART.JS -->
+  <!-- ===================================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js"
+  ></script>
+
+  <!-- ===================================================== -->
+  <!-- QRCODE.JS -->
+  <!-- ===================================================== -->
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+  ></script>
+
+  <!-- ===================================================== -->
+  <!-- SUPABASE JS -->
+  <!-- MUST LOAD BEFORE script.js -->
+  <!-- ===================================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <!-- ===================================================== -->
+  <!-- MAIN CSS -->
+  <!-- ===================================================== -->
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  />
 </head>
+
 <body>
 
-  <!-- Navigation -->
+  <!-- ===================================================== -->
+  <!-- NAVIGATION -->
+  <!-- ===================================================== -->
+
   <header class="navbar">
+
     <div class="nav-container">
+
       <div class="brand">
-        <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+
+        <svg
+          class="logo-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+          ></path>
+
+          <path
+            d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+          ></path>
         </svg>
-        <span class="brand-name">LinkLite</span>
+
+        <span class="brand-name">
+          LinkLite
+        </span>
+
       </div>
+
+      <!-- ================================================= -->
+      <!-- NAV LINKS -->
+      <!-- ================================================= -->
+
       <nav class="nav-links">
-        <a href="#hero" class="nav-link active">Home</a>
-        <a href="#dashboard" class="nav-link">Dashboard</a>
-        <a href="#analytics" class="nav-link">Analytics</a>
-        <a href="https://github.com/NotMubasshir" target="_blank" rel="noopener noreferrer" class="nav-link icon-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+
+        <a
+          href="#hero"
+          class="nav-link active"
+        >
+          Home
         </a>
-        <button id="themeToggleBtn" class="theme-toggle" aria-label="Toggle dark mode">
-          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+
+        <a
+          href="#dashboard"
+          class="nav-link"
+        >
+          Dashboard
+        </a>
+
+        <a
+          href="#analytics"
+          class="nav-link"
+        >
+          Analytics
+        </a>
+
+        <a
+          href="https://github.com/NotMubasshir"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="nav-link icon-link"
+          aria-label="GitHub"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+            ></path>
+          </svg>
+        </a>
+
+        <!-- ================================================= -->
+        <!-- THEME TOGGLE -->
+        <!-- ================================================= -->
+
+        <button
+          id="themeToggleBtn"
+          class="theme-toggle"
+          aria-label="Toggle dark mode"
+          type="button"
+        >
+
+          <svg
+            class="sun-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="5"
+            ></circle>
+
+            <line
+              x1="12"
+              y1="1"
+              x2="12"
+              y2="3"
+            ></line>
+
+            <line
+              x1="12"
+              y1="21"
+              x2="12"
+              y2="23"
+            ></line>
+
+            <line
+              x1="4.22"
+              y1="4.22"
+              x2="5.64"
+              y2="5.64"
+            ></line>
+
+            <line
+              x1="18.36"
+              y1="18.36"
+              x2="19.78"
+              y2="19.78"
+            ></line>
+
+            <line
+              x1="1"
+              y1="12"
+              x2="3"
+              y2="12"
+            ></line>
+
+            <line
+              x1="21"
+              y1="12"
+              x2="23"
+              y2="12"
+            ></line>
+
+            <line
+              x1="4.22"
+              y1="19.78"
+              x2="5.64"
+              y2="18.36"
+            ></line>
+
+            <line
+              x1="18.36"
+              y1="5.64"
+              x2="19.78"
+              y2="4.22"
+            ></line>
+          </svg>
+
+          <svg
+            class="moon-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+            ></path>
+          </svg>
+
         </button>
 
-        <!-- Auth Section Controls -->
+        <!-- ================================================= -->
+        <!-- AUTH -->
+        <!-- ================================================= -->
+
         <div class="auth-controls">
+
+          <!-- LOGGED OUT -->
+
           <div id="loggedOutNav">
-            <button id="openAuthBtn" class="btn btn-primary btn-sm">Sign In</button>
+
+            <button
+              id="openAuthBtn"
+              class="btn btn-primary btn-sm"
+              type="button"
+            >
+              Sign In
+            </button>
+
           </div>
-          <div id="loggedInNav" class="user-profile-menu hidden">
-            <span id="userGreeting" class="user-greeting"></span>
-            <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+
+          <!-- LOGGED IN -->
+
+          <div
+            id="loggedInNav"
+            class="user-profile-menu hidden"
+          >
+
+            <span
+              id="userGreeting"
+              class="user-greeting"
+            ></span>
+
+            <button
+              id="logoutBtn"
+              class="btn btn-secondary btn-sm"
+              type="button"
+            >
+              Logout
+            </button>
+
           </div>
+
         </div>
+
       </nav>
+
     </div>
+
   </header>
 
+  <!-- ===================================================== -->
+  <!-- MAIN -->
+  <!-- ===================================================== -->
+
   <main class="main-layout">
-    <!-- Hero Section -->
-    <section id="hero" class="hero-section">
+
+    <!-- =================================================== -->
+    <!-- HERO -->
+    <!-- =================================================== -->
+
+    <section
+      id="hero"
+      class="hero-section"
+    >
+
       <div class="hero-header">
-        <h1 class="hero-title">Shorten URLs. Share Smarter.</h1>
-        <p class="hero-subtitle">A fast, secure, and modern URL shortener built for productivity and analytics.</p>
+
+        <h1 class="hero-title">
+          Shorten URLs. Share Smarter.
+        </h1>
+
+        <p class="hero-subtitle">
+          A fast, secure, and modern URL shortener built for productivity and analytics.
+        </p>
+
       </div>
 
-      <div class="url-input-card" id="dropZone">
-        <form id="shortenForm" class="shorten-form">
+      <!-- ================================================= -->
+      <!-- URL SHORTENER -->
+      <!-- ================================================= -->
+
+      <div
+        class="url-input-card"
+        id="dropZone"
+      >
+
+        <form
+          id="shortenForm"
+          class="shorten-form"
+        >
+
           <div class="input-group">
-            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            <input type="url" id="longUrlInput" placeholder="Paste a long URL here (or drag and drop)..." required />
-            <button type="submit" id="shortenBtn" class="btn btn-primary">
-              <span class="btn-text">Shorten</span>
+
+            <!-- URL ICON -->
+
+            <svg
+              class="input-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+
+              <path
+                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+              ></path>
+
+              <path
+                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+              ></path>
+
+            </svg>
+
+            <input
+              type="url"
+              id="longUrlInput"
+              placeholder="Paste a long URL here (or drag and drop)..."
+              required
+              autocomplete="url"
+            />
+
+            <button
+              type="submit"
+              id="shortenBtn"
+              class="btn btn-primary"
+            >
+
+              <span class="btn-text">
+                Shorten
+              </span>
+
               <span class="spinner hidden"></span>
+
             </button>
+
           </div>
 
-          <!-- Advanced Options Accordion -->
+          <!-- ================================================= -->
+          <!-- ADVANCED OPTIONS -->
+          <!-- ================================================= -->
+
           <details class="advanced-options">
-            <summary>Advanced Options (Custom alias, expiration, password)</summary>
+
+            <summary>
+              Advanced Options (Custom alias, expiration, password)
+            </summary>
+
             <div class="options-grid">
+
+              <!-- CUSTOM ALIAS -->
+
               <div class="field-group">
-                <label for="customAlias">Custom Alias</label>
-                <input type="text" id="customAlias" placeholder="e.g. my-custom-link" />
+
+                <label
+                  for="customAlias"
+                >
+                  Custom Alias
+                </label>
+
+                <input
+                  type="text"
+                  id="customAlias"
+                  placeholder="e.g. my-custom-link"
+                  maxlength="50"
+                  autocomplete="off"
+                />
+
               </div>
+
+              <!-- EXPIRATION -->
+
               <div class="field-group">
-                <label for="expirationDate">Expiration Date</label>
-                <input type="date" id="expirationDate" />
+
+                <label
+                  for="expirationDate"
+                >
+                  Expiration Date
+                </label>
+
+                <input
+                  type="date"
+                  id="expirationDate"
+                />
+
               </div>
+
+              <!-- PASSWORD -->
+
               <div class="field-group">
-                <label for="passwordProtect">Password Protection</label>
-                <input type="password" id="passwordProtect" placeholder="Optional password" />
+
+                <label
+                  for="passwordProtect"
+                >
+                  Password Protection
+                </label>
+
+                <input
+                  type="password"
+                  id="passwordProtect"
+                  placeholder="Optional password"
+                  autocomplete="new-password"
+                />
+
               </div>
+
             </div>
+
           </details>
+
         </form>
+
       </div>
 
-      <!-- Result Card -->
-      <div id="resultCard" class="card result-card hidden">
+      <!-- ================================================= -->
+      <!-- RESULT CARD -->
+      <!-- ================================================= -->
+
+      <div
+        id="resultCard"
+        class="card result-card hidden"
+      >
+
         <div class="result-header">
-          <span class="badge badge-success">Link Created Successfully!</span>
-          <span class="created-time" id="resultTime">Just now</span>
+
+          <span class="badge badge-success">
+            Link Created Successfully!
+          </span>
+
+          <span
+            class="created-time"
+            id="resultTime"
+          >
+            Just now
+          </span>
+
         </div>
+
         <div class="result-body">
+
           <div class="result-info">
-            <label>Short Link</label>
+
+            <label for="resultShortUrl">
+              Short Link
+            </label>
+
             <div class="short-link-group">
-              <input type="text" id="resultShortUrl" readonly />
-              <button id="copyResultBtn" class="btn btn-secondary">Copy</button>
-              <a id="openResultLink" target="_blank" class="btn btn-icon" title="Open Link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+
+              <input
+                type="text"
+                id="resultShortUrl"
+                readonly
+              />
+
+              <button
+                id="copyResultBtn"
+                class="btn btn-secondary"
+                type="button"
+              >
+                Copy
+              </button>
+
+              <a
+                id="openResultLink"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-icon"
+                title="Open Link"
+                aria-label="Open Link"
+              >
+
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+
+                  <path
+                    d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                  ></path>
+
+                  <polyline
+                    points="15 3 21 3 21 9"
+                  ></polyline>
+
+                  <line
+                    x1="10"
+                    y1="14"
+                    x2="21"
+                    y2="3"
+                  ></line>
+
+                </svg>
+
               </a>
+
             </div>
+
             <div class="original-url-text">
-              <strong>Original:</strong> <span id="resultOriginalUrl"></span>
+
+              <strong>
+                Original:
+              </strong>
+
+              <span
+                id="resultOriginalUrl"
+              ></span>
+
             </div>
+
           </div>
+
+          <!-- QR -->
+
           <div class="qr-container">
+
             <div id="qrcode"></div>
-            <button id="downloadQrBtn" class="btn-link">Download QR</button>
+
+            <button
+              id="downloadQrBtn"
+              class="btn-link"
+              type="button"
+            >
+              Download QR
+            </button>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
 
-    <!-- Dashboard Metrics -->
-    <section id="dashboard" class="dashboard-section">
+    <!-- =================================================== -->
+    <!-- DASHBOARD -->
+    <!-- =================================================== -->
+
+    <section
+      id="dashboard"
+      class="dashboard-section"
+    >
+
       <div class="section-title-group">
-        <h2>Dashboard Overview</h2>
+
+        <h2>
+          Dashboard Overview
+        </h2>
+
         <div class="bulk-actions">
-          <button id="exportCsvBtn" class="btn btn-secondary btn-sm">Export CSV</button>
+
+          <button
+            id="exportCsvBtn"
+            class="btn btn-secondary btn-sm"
+            type="button"
+          >
+            Export CSV
+          </button>
+
         </div>
+
       </div>
+
+      <!-- ================================================= -->
+      <!-- METRICS -->
+      <!-- ================================================= -->
 
       <div class="metrics-grid">
+
         <div class="metric-card">
-          <span class="metric-label">Total Links</span>
-          <span class="metric-value" id="metricTotalLinks">0</span>
+
+          <span class="metric-label">
+            Total Links
+          </span>
+
+          <span
+            class="metric-value"
+            id="metricTotalLinks"
+          >
+            0
+          </span>
+
         </div>
+
         <div class="metric-card">
-          <span class="metric-label">Total Clicks</span>
-          <span class="metric-value" id="metricTotalClicks">0</span>
+
+          <span class="metric-label">
+            Total Clicks
+          </span>
+
+          <span
+            class="metric-value"
+            id="metricTotalClicks"
+          >
+            0
+          </span>
+
         </div>
+
         <div class="metric-card">
-          <span class="metric-label">Today's Clicks</span>
-          <span class="metric-value" id="metricTodayClicks">0</span>
+
+          <span class="metric-label">
+            Today's Clicks
+          </span>
+
+          <span
+            class="metric-value"
+            id="metricTodayClicks"
+          >
+            0
+          </span>
+
         </div>
+
         <div class="metric-card">
-          <span class="metric-label">Active Links</span>
-          <span class="metric-value" id="metricActiveLinks">0</span>
+
+          <span class="metric-label">
+            Active Links
+          </span>
+
+          <span
+            class="metric-value"
+            id="metricActiveLinks"
+          >
+            0
+          </span>
+
         </div>
+
       </div>
 
-      <!-- Table & Filters -->
+      <!-- ================================================= -->
+      <!-- TABLE -->
+      <!-- ================================================= -->
+
       <div class="table-container-card">
+
         <div class="table-controls">
+
+          <!-- SEARCH -->
+
           <div class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="searchInput" placeholder="Search links or titles..." />
+
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+
+              <circle
+                cx="11"
+                cy="11"
+                r="8"
+              ></circle>
+
+              <line
+                x1="21"
+                y1="21"
+                x2="16.65"
+                y2="16.65"
+              ></line>
+
+            </svg>
+
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search links or URLs..."
+              autocomplete="off"
+            />
+
           </div>
+
+          <!-- FILTERS -->
+
           <div class="filter-box">
-            <select id="statusFilter">
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="expired">Expired</option>
-              <option value="favorite">Favorites</option>
+
+            <select
+              id="statusFilter"
+            >
+
+              <option value="all">
+                All Status
+              </option>
+
+              <option value="active">
+                Active
+              </option>
+
+              <option value="expired">
+                Expired
+              </option>
+
+              <option value="favorite">
+                Favorites
+              </option>
+
             </select>
-            <select id="sortSelect">
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="clicks">Most Clicks</option>
+
+            <select
+              id="sortSelect"
+            >
+
+              <option value="newest">
+                Newest First
+              </option>
+
+              <option value="oldest">
+                Oldest First
+              </option>
+
+              <option value="clicks">
+                Most Clicks
+              </option>
+
             </select>
+
           </div>
+
         </div>
+
+        <!-- ================================================= -->
+        <!-- TABLE -->
+        <!-- ================================================= -->
 
         <div class="table-wrapper">
+
           <table class="links-table">
+
             <thead>
+
               <tr>
-                <th>Short Link</th>
-                <th>Original URL</th>
-                <th>Clicks</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th class="text-right">Actions</th>
+
+                <th>
+                  Short Link
+                </th>
+
+                <th>
+                  Original URL
+                </th>
+
+                <th>
+                  Clicks
+                </th>
+
+                <th>
+                  Status
+                </th>
+
+                <th>
+                  Created
+                </th>
+
+                <th class="text-right">
+                  Actions
+                </th>
+
               </tr>
+
             </thead>
-            <tbody id="linksTableBody">
-              <!-- Dynamically Populated -->
+
+            <tbody
+              id="linksTableBody"
+            >
+              <!-- Populated by JS -->
             </tbody>
+
           </table>
-          <div id="emptyState" class="empty-state hidden">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            <h3>No links found</h3>
-            <p>Shorten your first link above or adjust your search filters.</p>
+
+          <!-- ================================================= -->
+          <!-- EMPTY STATE -->
+          <!-- ================================================= -->
+
+          <div
+            id="emptyState"
+            class="empty-state hidden"
+          >
+
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+
+              <path
+                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+              ></path>
+
+              <path
+                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+              ></path>
+
+            </svg>
+
+            <h3>
+              No links found
+            </h3>
+
+            <p>
+              Shorten your first link above or adjust your search filters.
+            </p>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
 
-    <!-- Analytics Section -->
-    <section id="analytics" class="analytics-section">
+    <!-- =================================================== -->
+    <!-- ANALYTICS -->
+    <!-- =================================================== -->
+
+    <section
+      id="analytics"
+      class="analytics-section"
+    >
+
       <div class="section-title-group">
-        <h2>Analytics Overview</h2>
-        <span class="subtext">Aggregate metrics across all links</span>
+
+        <h2>
+          Analytics Overview
+        </h2>
+
+        <span class="subtext">
+          Aggregate metrics across your links
+        </span>
+
       </div>
 
       <div class="analytics-grid">
+
+        <!-- CLICKS -->
+
         <div class="chart-card">
-          <h3>Clicks Over Time</h3>
-          <canvas id="clicksChart"></canvas>
+
+          <h3>
+            Clicks Overview
+          </h3>
+
+          <canvas
+            id="clicksChart"
+          ></canvas>
+
         </div>
+
+        <!-- REFERRERS -->
+
         <div class="chart-card">
-          <h3>Traffic Sources (Referrers)</h3>
-          <canvas id="referrerChart"></canvas>
+
+          <h3>
+            Traffic Sources (Referrers)
+          </h3>
+
+          <canvas
+            id="referrerChart"
+          ></canvas>
+
         </div>
+
       </div>
+
     </section>
+
   </main>
 
-  <!-- Authentication Modal -->
-  <div id="authModal" class="modal-overlay hidden">
+  <!-- ===================================================== -->
+  <!-- AUTHENTICATION MODAL -->
+  <!-- ===================================================== -->
+
+  <div
+    id="authModal"
+    class="modal-overlay hidden"
+  >
+
     <div class="modal-card">
-      <button id="closeAuthModal" class="modal-close">&times;</button>
-      
-      <!-- Tab Switchers -->
+
+      <!-- CLOSE -->
+
+      <button
+        id="closeAuthModal"
+        class="modal-close"
+        type="button"
+        aria-label="Close"
+      >
+        &times;
+      </button>
+
+      <!-- ================================================= -->
+      <!-- TABS -->
+      <!-- ================================================= -->
+
       <div class="auth-tabs">
-        <button id="tabLoginBtn" class="auth-tab active">Sign In</button>
-        <button id="tabRegisterBtn" class="auth-tab">Create Account</button>
+
+        <button
+          id="tabLoginBtn"
+          class="auth-tab active"
+          type="button"
+        >
+          Sign In
+        </button>
+
+        <button
+          id="tabRegisterBtn"
+          class="auth-tab"
+          type="button"
+        >
+          Create Account
+        </button>
+
       </div>
 
-      <!-- Login Form -->
-      <form id="loginForm" class="auth-form">
+      <!-- ================================================= -->
+      <!-- LOGIN -->
+      <!-- ================================================= -->
+
+      <form
+        id="loginForm"
+        class="auth-form"
+      >
+
         <div class="field-group">
-          <label for="loginIdentifier">Username or Email</label>
-          <input type="text" id="loginIdentifier" required placeholder="user@example.com or username" />
+
+          <label
+            for="loginIdentifier"
+          >
+            Email
+          </label>
+
+          <input
+            type="email"
+            id="loginIdentifier"
+            required
+            placeholder="you@example.com"
+            autocomplete="email"
+          />
+
         </div>
+
         <div class="field-group">
-          <label for="loginPassword">Password</label>
-          <input type="password" id="loginPassword" required placeholder="••••••••" />
+
+          <label
+            for="loginPassword"
+          >
+            Password
+          </label>
+
+          <input
+            type="password"
+            id="loginPassword"
+            required
+            placeholder="••••••••"
+            autocomplete="current-password"
+          />
+
         </div>
-        <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-full"
+        >
+          Sign In
+        </button>
+
       </form>
 
-      <!-- Registration Form -->
-      <form id="registerForm" class="auth-form hidden">
+      <!-- ================================================= -->
+      <!-- REGISTER -->
+      <!-- ================================================= -->
+
+      <form
+        id="registerForm"
+        class="auth-form hidden"
+      >
+
         <div class="field-group">
-          <label for="regUsername">Username</label>
-          <input type="text" id="regUsername" required placeholder="johndoe" />
+
+          <label
+            for="regUsername"
+          >
+            Username
+          </label>
+
+          <input
+            type="text"
+            id="regUsername"
+            required
+            minlength="3"
+            maxlength="20"
+            placeholder="johndoe"
+            autocomplete="username"
+          />
+
         </div>
+
         <div class="field-group">
-          <label for="regEmail">Email Address</label>
-          <input type="email" id="regEmail" required placeholder="john@example.com" />
+
+          <label
+            for="regEmail"
+          >
+            Email Address
+          </label>
+
+          <input
+            type="email"
+            id="regEmail"
+            required
+            placeholder="john@example.com"
+            autocomplete="email"
+          />
+
         </div>
+
         <div class="field-group">
-          <label for="regPassword">Password</label>
-          <input type="password" id="regPassword" minlength="6" required placeholder="At least 6 characters" />
+
+          <label
+            for="regPassword"
+          >
+            Password
+          </label>
+
+          <input
+            type="password"
+            id="regPassword"
+            minlength="6"
+            required
+            placeholder="At least 6 characters"
+            autocomplete="new-password"
+          />
+
         </div>
-        <button type="submit" class="btn btn-primary btn-full">Register</button>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-full"
+        >
+          Register
+        </button>
+
       </form>
+
     </div>
+
   </div>
 
-  <!-- Toast Container -->
-  <div id="toastContainer" class="toast-container"></div>
+  <!-- ===================================================== -->
+  <!-- PASSWORD PROTECTED LINK MODAL -->
+  <!-- ===================================================== -->
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="footer-container">
-      <p>© 2026 LinkLite. Built with performance and precision.</p>
-      <p>Designed & Developed by <a href="https://github.com/NotMubasshir" target="_blank" rel="noopener noreferrer" class="footer-author"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg> NotMubasshir</a></p>
+  <div
+    id="passwordModal"
+    class="modal-overlay hidden"
+  >
+
+    <div class="modal-card">
+
+      <div class="auth-tabs">
+
+        <div class="auth-tab active">
+          Protected Link
+        </div>
+
+      </div>
+
+      <form
+        id="passwordForm"
+        class="auth-form"
+      >
+
+        <div class="field-group">
+
+          <label
+            for="linkPasswordInput"
+          >
+            Link Password
+          </label>
+
+          <input
+            type="password"
+            id="linkPasswordInput"
+            required
+            placeholder="Enter the link password"
+            autocomplete="off"
+          />
+
+        </div>
+
+        <p
+          id="passwordError"
+          class="hidden"
+        >
+          Incorrect password. Please try again.
+        </p>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-full"
+        >
+          Continue
+        </button>
+
+      </form>
+
     </div>
+
+  </div>
+
+  <!-- ===================================================== -->
+  <!-- TOAST -->
+  <!-- ===================================================== -->
+
+  <div
+    id="toastContainer"
+    class="toast-container"
+  ></div>
+
+  <!-- ===================================================== -->
+  <!-- FOOTER -->
+  <!-- ===================================================== -->
+
+  <footer class="footer">
+
+    <div class="footer-container">
+
+      <p>
+        © 2026 LinkLite.
+        Built with performance and precision.
+      </p>
+
+      <p>
+
+        Designed & Developed by
+
+        <a
+          href="https://github.com/NotMubasshir"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="footer-author"
+        >
+
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <path
+              d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+            ></path>
+
+          </svg>
+
+          NotMubasshir
+
+        </a>
+
+      </p>
+
+    </div>
+
   </footer>
 
+  <!-- ===================================================== -->
+  <!-- MAIN SCRIPT -->
+  <!-- IMPORTANT: Keep this LAST -->
+  <!-- ===================================================== -->
+
   <script src="script.js"></script>
+
 </body>
-</html>  
+</html>
